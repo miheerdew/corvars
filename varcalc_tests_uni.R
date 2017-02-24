@@ -43,3 +43,5 @@ for (sim in 1:nsims) {
   CM_timers[sim] <- get_nanotime() - timer
   
 }
+
+plot(CM_vars, vars)
