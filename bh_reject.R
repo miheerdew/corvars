@@ -1,3 +1,11 @@
+symdiff <- function (s1, s2) {
+  return(union(setdiff(s1, s2), setdiff(s2, s1)))
+}
+
+jaccard <- function (s1, s2) {
+  return(length(symdiff(s1, s2)) / length(union(s1, s2)))
+}
+
 bh_reject <- function (pvals, alpha, conserv = TRUE) {
   
   m <- length(pvals)
