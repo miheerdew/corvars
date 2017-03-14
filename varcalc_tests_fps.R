@@ -187,6 +187,7 @@ dev.off()
 
 p <- ggplot(percData, aes(x = Method, y = Count)) + 
   geom_bar(stat = "identity") + facet_grid(~Sample.Size) + 
-  labs(y = "# Times 2 comms were sticky")
-p
+  labs(y = "# Times 2 comms were sticky",
+       title = "CM/DCM sticky counts, by sample size")
+ggsave("sticky_counts.png", p)
 
