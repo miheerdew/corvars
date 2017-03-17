@@ -1,9 +1,18 @@
+library(Ckmeans.1d.dp)
+
 symdiff <- function (s1, s2) {
   return(union(setdiff(s1, s2), setdiff(s2, s1)))
 }
 
 jaccard <- function (s1, s2) {
   return(length(symdiff(s1, s2)) / length(union(s1, s2)))
+}
+
+cluster_thres <- function (zs) {
+  
+  clust <- Ckmeans.1d.dp(zs, 2)$cluster
+  thres <- min(zs[clust == 2])
+  return(which(zs >= thres))
 }
 
 bh_reject <- function (pvals, alpha, conserv = TRUE) {

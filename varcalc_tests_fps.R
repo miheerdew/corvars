@@ -11,6 +11,9 @@ fNames <- c("CM", "prepData_CM", "init_CM", "run_CM", "resid_CM",
 sNames <- file.path(repoDir, paste0(fNames, ".R"))
 sourceOut <- source_https(sNames)
 
+# Want to run CM?
+runCM <- FALSE
+
 source("mvrnormR.R")
 source("varcalcs.R")
 source("moment_calcs.R")
@@ -29,7 +32,7 @@ SigmaX_hom <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
 s2 <- s2 * 250 * (1 - rho + rho * 250)
 
 zs_comm <- zs_back <- matrix(0, ndatas, nsims)
-overlaps <- overlaps2 <- array(0, dim = c(length(ndatas), nsims, 3))
+overlaps0 <- overlaps <- overlaps2 <- array(0, dim = c(length(ndatas), nsims, 3))
 overlapsCM <- array(0, dim = c(length(ndatas), nsims, 3, 4))
 overlapsDCM <- array(0, dim = c(length(ndatas), nsims, 3, 4))
 
@@ -59,6 +62,47 @@ for (i in seq_along(ndatas)) {
     
     X <- cbind(Data1, Data2, Data3)
     
+    # Computing full update
+    firstcors <- cor(X[ , 1], X)
+    fishers <- sqrt(ndata - 3) * atanh(firstcors)
+    fisherps <- pnorm(fishers, lower.tail = FALSE)
+    B_new <- bh_reject(fisherps, 0.05)
+    itCount <- 1
+    
+    repeat {
+      
+      B_old <- B_new
+      cat("--------iteration", itCount, "\n")
+      
+      # Computing update
+      Us <- X
+      MA <- X[ , B_new]
+      if (JP) {
+        corsums <- rowSums(cor(Us, MA))
+        vars <- varcalc1_multi(Us, MA) / ndata
+      } else {
+        corsums <- rowMeans(cor(Us, MA))  
+        Us <- stdize(t(Us))
+        MA <- stdize(t(MA))
+        vars <- makeVars(Us, MA)
+      }
+      zs <- corsums / sqrt(vars)
+      ps <- pnorm(zs, lower.tail = FALSE)
+      B_new <- bh_reject(ps, 0.05)
+      B_new2 <- cluster_thres(zs)
+      if (length(B_new) > length(B_new2)) B_new <- B_new2
+      
+      if (jaccard(B_old, B_new) == 0)
+        break
+      itCount <- itCount + 1
+      
+    }
+    
+    # Storing overlaps
+    overlaps0[i, sim, 1] <- length(intersect(B_new, 1:100)) / length(B_new)
+    overlaps0[i, sim, 2] <- length(intersect(B_new, 101:200)) / length(B_new)
+    overlaps0[i, sim, 3] <- length(intersect(B_new, 201:300)) / length(B_new)
+    
     # Computing first update
     Us <- X
     MA <- X[ , 1:100]
@@ -80,7 +124,7 @@ for (i in seq_along(ndatas)) {
     overlaps[i, sim, 2] <- length(intersect(B1, 101:200)) / length(B1)
     overlaps[i, sim, 3] <- length(intersect(B1, 201:300)) / length(B1)
     
-    # Completing updates
+    # Completing first update
     B_new <- B1
     itCount <- 1
     
@@ -104,6 +148,8 @@ for (i in seq_along(ndatas)) {
       zs <- corsums / sqrt(vars)
       ps <- pnorm(zs, lower.tail = FALSE)
       B_new <- bh_reject(ps, 0.05)
+      B_new2 <- cluster_thres(zs)
+      if (length(B_new) > length(B_new2)) B_new <- B_new2
       
       if (jaccard(B_old, B_new) == 0)
         break
@@ -116,35 +162,39 @@ for (i in seq_along(ndatas)) {
     overlaps2[i, sim, 2] <- length(intersect(B_new, 101:200)) / length(B_new)
     overlaps2[i, sim, 3] <- length(intersect(B_new, 201:300)) / length(B_new)
     
+    if (overlaps2[i, sim, 1] < 0.75) break
+    
     # Storing some marginal zs
     zs_comm[i, sim] <- zs1[101]
     zs_back[i, sim] <- zs1[201]
     
-    # Running CM
-    CMout <- CM(t(X), max.groups = Inf, max.iter = 100, max.time = Inf)
+    if (runCM) {
     
-    
-    # Storing overlaps
-    for (j in 1:min(length(CMout$DC_sets), 4)) {
-      B <- CMout$DC_sets[[j]]
-      overlapsCM[i, sim, 1, j] <- length(intersect(B, 1:100)) / length(B_new)
-      overlapsCM[i, sim, 2, j] <- length(intersect(B, 101:200)) / length(B_new)
-      overlapsCM[i, sim, 3, j] <- length(intersect(B, 201:300)) / length(B_new)
+      # Running CM
+      CMout <- CM(t(X), max.groups = Inf, max.iter = 100, max.time = Inf)
+      
+      
+      # Storing overlaps
+      for (j in 1:min(length(CMout$DC_sets), 4)) {
+        B <- CMout$DC_sets[[j]]
+        overlapsCM[i, sim, 1, j] <- length(intersect(B, 1:100)) / length(B_new)
+        overlapsCM[i, sim, 2, j] <- length(intersect(B, 101:200)) / length(B_new)
+        overlapsCM[i, sim, 3, j] <- length(intersect(B, 201:300)) / length(B_new)
+      }
+      
+      # Simulating null samples
+      Xnull <- mvrnormR(ndata, rep(0, 3 * m), diag(3 * m))
+      DCMout <- DCM(t(X), t(Xnull), max.groups = Inf, max.iter = 100, max.time = Inf)
+      
+      # Storing overlaps
+      for (j in 1:min(length(DCMout$DC_sets), 4)) {
+        B <- DCMout$DC_sets[[j]]
+        overlapsDCM[i, sim, 1, j] <- length(intersect(B, 1:100)) / length(B_new)
+        overlapsDCM[i, sim, 2, j] <- length(intersect(B, 101:200)) / length(B_new)
+        overlapsDCM[i, sim, 3, j] <- length(intersect(B, 201:300)) / length(B_new)
+      }
+      
     }
-    
-    # Simulating null samples
-    Xnull <- mvrnormR(ndata, rep(0, 3 * m), diag(3 * m))
-    DCMout <- DCM(t(X), t(Xnull), max.groups = Inf, max.iter = 100, max.time = Inf)
-    
-    # Storing overlaps
-    for (j in 1:min(length(DCMout$DC_sets), 4)) {
-      B <- DCMout$DC_sets[[j]]
-      overlapsDCM[i, sim, 1, j] <- length(intersect(B, 1:100)) / length(B_new)
-      overlapsDCM[i, sim, 2, j] <- length(intersect(B, 101:200)) / length(B_new)
-      overlapsDCM[i, sim, 3, j] <- length(intersect(B, 201:300)) / length(B_new)
-    }
-    
-    
     
   }
   
