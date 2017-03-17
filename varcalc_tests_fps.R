@@ -1,23 +1,4 @@
 library(microbenchmark)
-library(RCurl)
-
-# Sourcing DCM functions
-source("source_https.R")
-repoDir <- "https://raw.githubusercontent.com/kbodwin/Differential-Correlation-Mining/master/DCM/R"
-fNames <- c("CM", "prepData_CM", "init_CM", "run_CM", "resid_CM",
-            "sanitize_CM", "stdize", "fisher", "makeVars", "emfa_DCM",
-            "init_DCM", "resid_DCM", "run_DCM", "DCM", "sanitize_DCM",
-            "prepData_DCM")
-sNames <- file.path(repoDir, paste0(fNames, ".R"))
-sourceOut <- source_https(sNames)
-
-# Want to run CM?
-runCM <- FALSE
-
-source("mvrnormR.R")
-source("varcalcs.R")
-source("moment_calcs.R")
-source("bh_reject.R")
 
 m <- 100
 my <- 100
@@ -26,7 +7,34 @@ nsims <- 100
 ndatas <- seq(1000, 3000, 1000)
 Beta <- 1
 s2 <- 1
-JP <- FALSE
+JP <- TRUE
+
+# Want to run CM?
+runCM <- FALSE
+
+# Run cluster_thres?
+cluster_thres <- FALSE
+
+if (runCM) {
+
+  library(RCurl)
+  # Sourcing DCM functions
+  source("source_https.R")
+  repoDir <- "https://raw.githubusercontent.com/kbodwin/Differential-Correlation-Mining/master/DCM/R"
+  fNames <- c("CM", "prepData_CM", "init_CM", "run_CM", "resid_CM",
+              "sanitize_CM", "stdize", "fisher", "makeVars", "emfa_DCM",
+              "init_DCM", "resid_DCM", "run_DCM", "DCM", "sanitize_DCM",
+              "prepData_DCM")
+  sNames <- file.path(repoDir, paste0(fNames, ".R"))
+  sourceOut <- source_https(sNames)
+  
+}
+
+source("mvrnormR.R")
+source("varcalcs.R")
+source("moment_calcs.R")
+source("bh_reject.R")
+
 
 SigmaX_hom <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
 s2 <- s2 * 250 * (1 - rho + rho * 250)
@@ -89,8 +97,11 @@ for (i in seq_along(ndatas)) {
       zs <- corsums / sqrt(vars)
       ps <- pnorm(zs, lower.tail = FALSE)
       B_new <- bh_reject(ps, 0.05)
-      B_new2 <- cluster_thres(zs)
-      if (length(B_new) > length(B_new2)) B_new <- B_new2
+      
+      if (cluster_thres) {
+        B_new2 <- cluster_thres(zs)
+        if (length(B_new) > length(B_new2)) B_new <- B_new2
+      }
       
       if (jaccard(B_old, B_new) == 0)
         break
@@ -201,43 +212,45 @@ for (i in seq_along(ndatas)) {
 }
 
 
-percData <- data.frame("Method" = character(6),
-                       "Sample.Size" = numeric(6),
-                       "Count" = numeric(6),
-                       stringsAsFactors = FALSE)
-
-
-png("OLplotCM.png")
-par(mfrow = c(2, 3))
-# Plotting stickiness
-for (i in seq_along(ndatas)) {
+if (runCM) {
+  percData <- data.frame("Method" = character(6),
+                         "Sample.Size" = numeric(6),
+                         "Count" = numeric(6),
+                         stringsAsFactors = FALSE)
   
   
-  plot(overlaps[i, , 2], apply(overlapsCM[i, , 1:2, 1], 1, max),
-       ylab = "Max C set match to A1", xlab = "% A2 in U(A1)",
-       main = paste0("DCM behavior, n = ", ndatas[i]))
-  
-  percData[2 * (i - 1) + 1, "Method"] <- "CM"
-  percData[2 * (i - 1) + 1, "Sample.Size"] <- ndatas[i]
-  percData[2 * (i - 1) + 1, "Count"] <- 
-    sum(apply(overlapsCM[i, , 1:2, 1], 1, max) <= .75)
-  
-  plot(overlaps[i, , 2], apply(overlapsDCM[i, , 1:2, 1], 1, max),
-       ylab = "Max DC set match to A1", xlab = "% A2 in U(A1)",
-       main = paste0("DCM behavior, n = ", ndatas[i]))
-  
-  percData[2 * (i - 1) + 2, "Method"] <- "DCM"
-  percData[2 * (i - 1) + 2, "Sample.Size"] <- ndatas[i]
-  percData[2 * (i - 1) + 2, "Count"] <- 
-    sum(apply(overlapsDCM[i, , 1:2, 1], 1, max) <= .75)
+  png("OLplotCM.png")
+  par(mfrow = c(2, 3))
+  # Plotting stickiness
+  for (i in seq_along(ndatas)) {
     
+    
+    plot(overlaps[i, , 2], apply(overlapsCM[i, , 1:2, 1], 1, max),
+         ylab = "Max C set match to A1", xlab = "% A2 in U(A1)",
+         main = paste0("DCM behavior, n = ", ndatas[i]))
+    
+    percData[2 * (i - 1) + 1, "Method"] <- "CM"
+    percData[2 * (i - 1) + 1, "Sample.Size"] <- ndatas[i]
+    percData[2 * (i - 1) + 1, "Count"] <- 
+      sum(apply(overlapsCM[i, , 1:2, 1], 1, max) <= .75)
+    
+    plot(overlaps[i, , 2], apply(overlapsDCM[i, , 1:2, 1], 1, max),
+         ylab = "Max DC set match to A1", xlab = "% A2 in U(A1)",
+         main = paste0("DCM behavior, n = ", ndatas[i]))
+    
+    percData[2 * (i - 1) + 2, "Method"] <- "DCM"
+    percData[2 * (i - 1) + 2, "Sample.Size"] <- ndatas[i]
+    percData[2 * (i - 1) + 2, "Count"] <- 
+      sum(apply(overlapsDCM[i, , 1:2, 1], 1, max) <= .75)
+      
+  }
+  
+  dev.off()
+  
+  p <- ggplot(percData, aes(x = Method, y = Count)) + 
+    geom_bar(stat = "identity") + facet_grid(~Sample.Size) + 
+    labs(y = "# Times 2 comms were sticky",
+         title = "CM/DCM sticky counts, by sample size")
+  ggsave("sticky_counts.png", p)
+
 }
-
-dev.off()
-
-p <- ggplot(percData, aes(x = Method, y = Count)) + 
-  geom_bar(stat = "identity") + facet_grid(~Sample.Size) + 
-  labs(y = "# Times 2 comms were sticky",
-       title = "CM/DCM sticky counts, by sample size")
-ggsave("sticky_counts.png", p)
-
