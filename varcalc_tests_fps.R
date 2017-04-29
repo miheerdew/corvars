@@ -1,19 +1,20 @@
 library(microbenchmark)
-
+library(ggplot2)
 m <- 100
 my <- 100
 rho <- 0.5
 nsims <- 100
-ndatas <- seq(1000, 3000, 1000)
+#ndatas <- seq(100, 600, 250)
+ndatas <- c(1000)
 Beta <- 1
 s2 <- 1
 JP <- TRUE
 
 # Want to run CM?
-runCM <- FALSE
+runCM <- TRUE
 
 # Run cluster_thres?
-cluster_thres <- FALSE
+do_cluster_thres <- FALSE
 
 if (runCM) {
 
@@ -98,7 +99,7 @@ for (i in seq_along(ndatas)) {
       ps <- pnorm(zs, lower.tail = FALSE)
       B_new <- bh_reject(ps, 0.05)
       
-      if (cluster_thres) {
+      if (do_cluster_thres) {
         B_new2 <- cluster_thres(zs)
         if (length(B_new) > length(B_new2)) B_new <- B_new2
       }
@@ -188,9 +189,9 @@ for (i in seq_along(ndatas)) {
       # Storing overlaps
       for (j in 1:min(length(CMout$DC_sets), 4)) {
         B <- CMout$DC_sets[[j]]
-        overlapsCM[i, sim, 1, j] <- length(intersect(B, 1:100)) / length(B_new)
-        overlapsCM[i, sim, 2, j] <- length(intersect(B, 101:200)) / length(B_new)
-        overlapsCM[i, sim, 3, j] <- length(intersect(B, 201:300)) / length(B_new)
+        overlapsCM[i, sim, 1, j] <- length(intersect(B, 1:100)) / length(B)
+        overlapsCM[i, sim, 2, j] <- length(intersect(B, 101:200)) / length(B)
+        overlapsCM[i, sim, 3, j] <- length(intersect(B, 201:300)) / length(B)
       }
       
       # Simulating null samples
@@ -200,9 +201,9 @@ for (i in seq_along(ndatas)) {
       # Storing overlaps
       for (j in 1:min(length(DCMout$DC_sets), 4)) {
         B <- DCMout$DC_sets[[j]]
-        overlapsDCM[i, sim, 1, j] <- length(intersect(B, 1:100)) / length(B_new)
-        overlapsDCM[i, sim, 2, j] <- length(intersect(B, 101:200)) / length(B_new)
-        overlapsDCM[i, sim, 3, j] <- length(intersect(B, 201:300)) / length(B_new)
+        overlapsDCM[i, sim, 1, j] <- length(intersect(B, 1:100)) / length(B)
+        overlapsDCM[i, sim, 2, j] <- length(intersect(B, 101:200)) / length(B)
+        overlapsDCM[i, sim, 3, j] <- length(intersect(B, 201:300)) / length(B)
       }
       
     }
@@ -213,21 +214,21 @@ for (i in seq_along(ndatas)) {
 
 
 if (runCM) {
-  percData <- data.frame("Method" = character(6),
-                         "Sample.Size" = numeric(6),
-                         "Count" = numeric(6),
+  percData <- data.frame("Method" = character(2 * length(ndatas)),
+                         "Sample.Size" = numeric(2 * length(ndatas)),
+                         "Count" = numeric(2 * length(ndatas)),
                          stringsAsFactors = FALSE)
   
   
   png("OLplotCM.png")
-  par(mfrow = c(2, 3))
+  par(mfrow = c(length(ndatas), 2))
   # Plotting stickiness
   for (i in seq_along(ndatas)) {
     
     
     plot(overlaps[i, , 2], apply(overlapsCM[i, , 1:2, 1], 1, max),
          ylab = "Max C set match to A1", xlab = "% A2 in U(A1)",
-         main = paste0("DCM behavior, n = ", ndatas[i]))
+         main = paste0("CM behavior, n = ", ndatas[i]))
     
     percData[2 * (i - 1) + 1, "Method"] <- "CM"
     percData[2 * (i - 1) + 1, "Sample.Size"] <- ndatas[i]
