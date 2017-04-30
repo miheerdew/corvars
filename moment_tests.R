@@ -6,6 +6,7 @@ s2 <- 1
 nsims0 <- 1000
 nsims <- 100
 ndata <- 10000
+m <- bX
 
 library(MASS)
 library(Matrix)

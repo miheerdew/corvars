@@ -12,9 +12,12 @@ mu1122 <- function (r) {1 + 2 * r^2}
 mu1234 <- function (r) {3 * r * (r - 1)^2 * (2 * r^2 + r) / d(r)}
 
 # Functions for total variance calculation
-pyyjk <- function (r) {(2 * pbr(r)^2 * (2 * r + 1) / (r + 1) + 
+pyyjk2 <- function (r) {(2 * pbr(r)^2 * (2 * r + 1) / (r + 1) + 
                           r * Beta * pbr(r) * (m + s2 / (Beta * pbr(r)) - 
                                                  2 * (1 - r + m * r) / (1 + r))) / varY(r)}
+pyyjk <- function (r) {(2 * pbr(r)^2 * (2 * r + 1) / (r + 1) + 
+                          r * Beta * pbr(r) * m + r * s2 - 
+                          r * Beta * pbr(r) * 2 * (1 - r + m * r) / (1 + r)) / varY(r)}
 pyyyy <- function (r) {3}
 pyyjj <- function (r) {(2 * pbr(r)^2 + varY(r)) / varY(r)}
 pyyyj <- function (r) {3 * varY(r) * pbr(r) / varY(r)^(3 / 2)}
