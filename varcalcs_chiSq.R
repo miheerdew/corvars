@@ -56,27 +56,32 @@ varcalc1_multi <- function (Ymat, Xmat) {
   
   # General calcs
   xyCors <- cor(Ymat, Xmat)
-  y4 <- colSums(Ymat^4)
-  xRowSum <- rowSums(Xmat)
-  xRowSum2 <- tcrossprod(xyCors, Xmat^2)
+  
+  y4 <- sum(Ymat^4)
+  x2RowSums <- rowSums(Xmat^2)
+  x4ColSums <- colSums(Xmat^4)
+  
+  corX <- tcrossprod(xyCors, Xmat)
+  cor2X2 <- tcrossprod(xyCors^2, Xmat^2)
+  corX3 <- tcrossprod(xyCors, Xmat^3)
   
   # Calc for star 1
-  star1 <- crossprod(Ymat^2, xRowSum^2)
+  star1 <- crossprod(Ymat^2, x2RowSums)
   
   # Calc for star 2
-  star2 <- y4 * rowSums(xyCors)^2
+  star2 <- y4 * sum(xyCors^2)
   
   # Calc for star 3
-  star3 <- 2 * rowSums(xyCors) * colSums(Ymat^2 * t(xRowSum2))
+  star3 <- 2 * rowSums(t(Ymat^2) * cor2X2)
   
   # Calc for star 4
-  star4 <- rowSums(xRowSum2^2)
+  star4 <- crossprod(t(xyCors^2), x4ColSums)
   
   # Calc for dagger 1
-  dagger1 <- rowSums(xyCors) * crossprod(Ymat^3, xRowSum)
+  dagger1 <- rowSums(t(Ymat^3) * corX)
   
   # Calc for dagger 2
-  dagger2 <- colSums(xRowSum * t(xRowSum2) * Ymat)
+  dagger2 <- rowSums(t(Ymat) * corX3)
   
     return((star1 + 0.25 * (star2 + star3 + star4) - dagger1 - dagger2) / (n - 1))
   

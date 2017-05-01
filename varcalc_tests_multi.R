@@ -31,7 +31,7 @@ for (sim in 1:nsims) {
   Yvars <- Beta * rowSums(Data) + matrix(rnorm(ndata * my, sd = sqrt(s2)),
                                          ncol = my)
   
-  
+  vars <- varcalc1_multi(Yvars, Data)
   # variance calculations
   corsums[posindx] <- rowSums(cor(Yvars, Data))
   timer <- get_nanotime()
