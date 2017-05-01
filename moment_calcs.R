@@ -12,9 +12,12 @@ mu1122 <- function (r) {1 + 2 * r^2}
 mu1234 <- function (r) {3 * r * (r - 1)^2 * (2 * r^2 + r) / d(r)}
 
 # Functions for total variance calculation
-pyyjk <- function (r) {(2 * pbr(r)^2 * (2 * r + 1) / (r + 1) + 
+pyyjk2 <- function (r) {(2 * pbr(r)^2 * (2 * r + 1) / (r + 1) + 
                           r * Beta * pbr(r) * (m + s2 / (Beta * pbr(r)) - 
                                                  2 * (1 - r + m * r) / (1 + r))) / varY(r)}
+pyyjk <- function (r) {(2 * pbr(r)^2 * (2 * r + 1) / (r + 1) + 
+                          r * Beta * pbr(r) * m + r * s2 - 
+                          r * Beta * pbr(r) * 2 * (1 - r + m * r) / (1 + r)) / varY(r)}
 pyyyy <- function (r) {3}
 pyyjj <- function (r) {(2 * pbr(r)^2 + varY(r)) / varY(r)}
 pyyyj <- function (r) {3 * varY(r) * pbr(r) / varY(r)^(3 / 2)}
@@ -27,13 +30,11 @@ popvar1234 <- function (r) {mu1234(r) + r^2 * mu1122(r) - r * 2 * mu1123(r)}
 popvar1213 <- function (r) {mu1123(r) + 0.25 * r^2 * 
     (mu1111(r) + 3 * mu1122(r)) - r * (mu1112(r) + mu1123(r))}
 
+diagVar <- function (r) {pyyjj(r) + 0.25 * pxy(r)^2 * (pyyyy(r) + 2 * pyyjj(r) +
+                                    mu1111(r)) - pxy(r) * (pyyyj(r) + pyjjj(r))}
+offdVar <- function (r) {pyyjk(r) + 0.25 * pxy(r)^2 * (pyyyy(r) + 2 * pyyjj(r) +
+                                        mu1122(r)) - pxy(r) * (pyyyj(r) + pyjjk(r))}
+
 popvar <- function (r) {
-  (
-    pyyjj(r) + 0.25 * pxy(r)^2 * (pyyyy(r) + 2 * pyyjj(r) +
-                                    mu1111(r)) - pxy(r) * (pyyyj(r) + pyjjj(r)) + 
-      (
-        pyyjk(r) + 0.25 * pxy(r)^2 * (pyyyy(r) + 2 * pyyjj(r) +
-                                        mu1122(r)) - pxy(r) * (pyyyj(r) + pyjjk(r))
-      ) * (m - 1)
-    
-  ) * m}
+  m * (diagVar(r) + offdVar(r) * (m - 1))
+}

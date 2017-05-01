@@ -1,11 +1,12 @@
 nX <- 1
 bX <- 20
 rhos <- 0.4
-Beta <- 1
+Beta <- 0
 s2 <- 1
 nsims0 <- 1000
 nsims <- 100
-ndata <- 10000
+ndata <- 2000
+m <- bX
 
 library(MASS)
 library(Matrix)
