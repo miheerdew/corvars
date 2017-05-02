@@ -4,10 +4,11 @@ source("varcalcs_chiSq.R")
 source("moment_calcs.R")
 
 m <- 20
-rho <- 0.4
+mY <- 10
+rho <- 0.0
 nsims <- 1000
 ndata <- 1000
-Beta <- 1
+Beta <- 0
 s2 <- 1
 
 SigmaX_hom <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
@@ -15,7 +16,7 @@ SigmaX_hom <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
 cors <- vars <- rep(0, nsims)
 corsmat <- matrix(0, m, nsims)
 
-#set.seed(12345)
+set.seed(12345)
 
 my_timers <- CM_timers <- rep(0, nsims)
 
@@ -29,8 +30,9 @@ for (sim in 1:nsims) {
   cat("sim ", sim, "\n")
   
   Data <- mvrnormR(ndata, rep(0, m), SigmaX_hom)
-  Yvars <- Beta * rowSums(Data) + rnorm(ndata, sd = sqrt(s2))
-  vars[sim] <- varcalc1(Yvars, Data)
+  Yvars <- Beta * rowSums(Data) + matrix(rnorm(ndata * mY, sd = sqrt(s2)), ncol = mY)
+  vars[sim] <- varcalc1(Yvars[ , 1], Data)
+  allvars <- varcalc1_multi(Yvars, Data)
   corsi <- cor(Yvars, Data)
   cors[sim] <- tcrossprod(corsi)
   corsmat[ , sim] <- corsi

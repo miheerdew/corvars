@@ -57,7 +57,7 @@ varcalc1_multi <- function (Ymat, Xmat) {
   # General calcs
   xyCors <- cor(Ymat, Xmat)
   
-  y4 <- sum(Ymat^4)
+  y4 <- colSums(Ymat^4)
   x2RowSums <- rowSums(Xmat^2)
   x4ColSums <- colSums(Xmat^4)
   
@@ -69,7 +69,7 @@ varcalc1_multi <- function (Ymat, Xmat) {
   star1 <- crossprod(Ymat^2, x2RowSums)
   
   # Calc for star 2
-  star2 <- y4 * sum(xyCors^2)
+  star2 <- y4 * rowSums(xyCors^2)
   
   # Calc for star 3
   star3 <- 2 * rowSums(t(Ymat^2) * cor2X2)
