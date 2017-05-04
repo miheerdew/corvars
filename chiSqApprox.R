@@ -1,12 +1,12 @@
 source("mvrnormR.R")
 
 nsims <- 1000
-m <- 10
+m <- 20
 rho <- 0.4
-Sig <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
+#Sig <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
 
-Data <- mvrnormR(nsims, mu = rep(0, m), sigma = Sig)
-stats <- rowSums(Data^2)
+Data2 <- mvrnormR(nsims, mu = rep(0, m), sigma = Sig)
+stats <- rowSums(Data2^2)
 Varcalc <- m * (3 + (m - 1) * (1 + 2 * rho^2)) - m^2
 var(stats)
 Varcalc

@@ -80,7 +80,7 @@ varcalc1_multi <- function (Ymat, Xmat) {
 
 varmat_uni <- function (Yvec, Xmat) {
   
-  Xmat <- scale(Xmat)
+  Xmat <- as.matrix(scale(Xmat))
   Yvec <- as.vector(scale(Yvec))
   
   n <- nrow(Xmat)
@@ -112,8 +112,12 @@ varmat_uni <- function (Yvec, Xmat) {
   # dagger 2
   D2 <- t(crossprod(Yvec * Xmat, Xmat^2)) * xyCors
   
-  bigmat <- S1 + (S2 + S3 + t(S3) + S4) / 4 - (D1 + t(D1) + D2 + t(D2)) / 2
+  bigmat <- (S1 + (S2 + S3 + t(S3) + S4) / 4 - (D1 + t(D1) + D2 + t(D2)) / 2) / (n - 1)
   
-  return(sum(bigmat) / (n - 1))
+  trSig <- sum(diag(bigmat))
+  trSig2 <- sum(diag(crossprod(bigmat)))
+  a <- trSig2 / trSig; b <- trSig^2 / trSig2
+  
+  return(list(a, b))
   
 }
