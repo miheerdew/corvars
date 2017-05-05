@@ -2,11 +2,11 @@ library(rbenchmark)
 source("mvrnormR.R")
 source("tracecalcs.R")
 
-m <- 20
-mY <- 1
+m <- 500
+mY <- 2
 rho <- 0.5
 nsims <- 1000
-ndata <- 1000
+ndata <- 100
 Beta <- 0
 s2 <- 1
 
@@ -21,7 +21,6 @@ for (sim in 1:nsims) {
   # Data generation
   X <- mvrnormR(ndata, rep(0, m), Sig)
   Y <- Beta * rowSums(X) + matrix(rnorm(ndata * mY, sd = sqrt(s2)), ncol = mY)
-  Y <- as.vector(Y)
   
   # General Calcs
   n <- nrow(X)

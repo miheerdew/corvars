@@ -1,27 +1,27 @@
-trace_uni <- function (Y) {
+trace_uni <- function (i) {
   
   # General calcs
-  xyCors <- as.vector(crossprod(Y, X)) / (n - 1)
+  xyCors <- as.vector(crossprod(Y[ , i], X)) / (n - 1)
   r <- sum(xyCors)
   rX2 <- crossprod(tX2, xyCors)
   
   # star 1
-  S1 <- crossprod(Y * X)
+  S1 <- crossprod(as.vector(Y[ , i]) * X)
   
   # star 2
   S2 <- Y4ColSums * tcrossprod(xyCors)
   
   # star 3
-  S3 <- tcrossprod(xyCors, xyCors * colSums(X2 * Y2))
+  S3 <- tcrossprod(xyCors, xyCors * colSums(X2 * as.vector(Y2[ , i])))
   
   # star 4
   S4 <- tcrossprod(xyCors * t(X2))
   
   # dagger 1
-  D1 <- tcrossprod(xyCors, colSums(X * Y3))
+  D1 <- tcrossprod(xyCors, colSums(X * as.vector(Y3[ , i])))
   
   # dagger 2
-  D2 <- t(crossprod(Y * X, X2)) * xyCors
+  D2 <- t(crossprod(as.vector(Y[ , i]) * X, X2)) * xyCors
   
   bigmat <- (S1 + (S2 + S3 + t(S3) + S4) / 4 - (D1 + t(D1) + D2 + t(D2)) / 2) / (n - 1)
   
@@ -74,16 +74,15 @@ trace_uni_mlist <- function (Yvec, Xmat) {
   
 }
 
-trace_uni_fast <- function (Y) {
+trace_uni_fast <- function () {
   
   # General calcs
-  xyCors <- as.vector(crossprod(Y, X)) / (n - 1)
+  xyCors <- crossprod(X, Y) / (n - 1)
   xyCors2 <- xyCors^2
   rX <- crossprod(tX, xyCors)
   r2X <- crossprod(tX, xyCors2)
   r2X2 <- crossprod(tX2, xyCors2)
   rX3 <- crossprod(tX3, xyCors)
-
   
   
   #AA
@@ -98,7 +97,9 @@ trace_uni_fast <- function (Y) {
   
   #AB2
   AB2array <- do.call(cbind, lapply(1:n, function (i) tX[ , i] * tX2))
-  AB2mat <- matrix(crossprod(AB2array, xyCors), n, byrow = TRUE)
+  #AB2mat <- matrix(crossprod(AB2array, xyCors), n, byrow = TRUE)
+  AB2mat <- tcrossprod(
+  AB2list <- lapply(1:ncol(AB2mat), function (i) matrix(AB2mat[ , i], nrow = n, byrow = TRUE))
   AB2 <- crossprod(Y2, crossprod(AB2mat, Y2 * rX)) / 4
   
   #AB3
@@ -107,7 +108,7 @@ trace_uni_fast <- function (Y) {
   
   
   #AB4
-  AB4 <- sum(Y2 * AB2mat^2) / 4
+  AB4 <- crossprod(rep(1, n), crossprod(AB2mat^2, Y2)) / 4
   
   
   
@@ -123,6 +124,7 @@ trace_uni_fast <- function (Y) {
   
   #AC3
   AC3 <- -crossprod(Y, crossprod(AB2mat * XXt, Y2)) / 2
+  
   
   
   #AC4
