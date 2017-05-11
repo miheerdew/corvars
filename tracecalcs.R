@@ -66,11 +66,8 @@ trace_uni_mlist <- function (Yvec, Xmat) {
   # dagger 2
   D2 <- t(crossprod(Yvec * Xmat, Xmat^2)) * xyCors
   
-  bigmat <- (S1 + (S2 + S3 + t(S3) + S4) / 4 - (D1 + t(D1) + D2 + t(D2)) / 2) / (n - 1)
-  
-  return(list(A = S1, 
-              B1 = S2 / 4, B2 = S3 / 4, B3 = t(S3) / 4, B4 = S4 / 4,
-              C1 = -t(D1) / 2, C2 = -D1 / 2, C3 = -t(D2) / 2, C4 = -D2 / 2))
+  return(list(A = S1, B1 = S2, B2 = S3, B3 = t(S3), B4 = S4,
+              C1 = t(D1), C2 = t(D2), C3 = D1, C4 = D2))
   
 }
 
@@ -97,8 +94,7 @@ trace_uni_fast <- function () {
   
   #AB2
   AB2array <- do.call(cbind, lapply(1:n, function (i) tX[ , i] * tX2))
-  #AB2mat <- matrix(crossprod(AB2array, xyCors), n, byrow = TRUE)
-  AB2mat <- tcrossprod(
+  AB2mat <- matrix(crossprod(AB2array, xyCors), n, byrow = TRUE)
   AB2list <- lapply(1:ncol(AB2mat), function (i) matrix(AB2mat[ , i], nrow = n, byrow = TRUE))
   AB2 <- crossprod(Y2, crossprod(AB2mat, Y2 * rX)) / 4
   

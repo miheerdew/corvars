@@ -2,15 +2,7 @@ library(rbenchmark)
 source("mvrnormR.R")
 source("tracecalcs.R")
 
-m <- 500
-mY <- 2
-rho <- 0.5
-nsims <- 1000
-ndata <- 100
-Beta <- 0
-s2 <- 1
 
-Sig <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
 
 set.seed(12345)
 
@@ -46,7 +38,7 @@ for (sim in 1:nsims) {
   X2RowSums <- rowSums(X2)
   
   # Trace calcs
-  trace_uni()
+  trace_uni(1)
   trace_uni_fast()
   
 }
