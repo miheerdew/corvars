@@ -10,7 +10,7 @@ s2 <- 1
 Sig <- diag(1 - rho, n) + matrix(rep(rho, n^2), ncol = n)
 
 # Data generation
-X <- mvrnormR(ndata, rep(0, n), Sig)
+X <- mvrnormR(m, rep(0, n), Sig)
 Y <- Beta * rowSums(X) + matrix(rnorm(m * nY, sd = sqrt(s2)), ncol = nY)
 
 # General Calcs
@@ -64,6 +64,7 @@ rm(trace_uni_fast, trace_uni)
 
 # The usage of the function is:
 mlist <- trace_uni_mlist(Y[ , 1], X)
+mlists <- lapply(1:nY, function (i) trace_uni_mlist(Y[ , i], X))
 # ...it does not take the full Y matrix.
 
 # This function is useful to check the accuracy of cross-term calculation.
@@ -82,10 +83,15 @@ AA
 # Cross-terms of category (2) can be obtained by pre-computing the non-pairwise term.
 # Cross-terms of category (3) are more difficult to deal with.
 # I will attempt AC2. See the Google doc for the derivation.
-AC2mat <- crossprod(xyCors[ , 1] * tX, tX2)
-AC2 <- crossprod(Y[ , 1], crossprod(AB2mat * XXt, Y2[ , 1]))
-AC2
-sum(mlist$A * mlist$C2)
+
+AC2s <- lapply(1:nY, function (i) {
+  AC2mat <- crossprod(xyCors[ , i] * tX, tX2)
+  AC2 <- crossprod(Y[ , i], crossprod(AC2mat * XXt, Y2[ , i]))
+  return(AC2)
+})
+
+unlist(AC2s)
+unlist(lapply(mlists, function (L) sum(L$A * L$C2)))
 
 # The issue is that the calculation of AC2 mat is not easily vectorizable across
 # multiple Y vectors. One solution would be to do an sapply over Y column indices, but
