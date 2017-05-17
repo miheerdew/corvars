@@ -1,0 +1,359 @@
+---
+title: "Trace cross-product calculations"
+author: "John Palowitch, Miheer Dewaskar"
+date: "May 16, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Setting parameters for the simulation, and generating data:
+
+```{r sim-params}
+n <- 500
+nY <- 2
+rho <- 0.5
+m <- 100
+Beta <- 0
+s2 <- 1
+Sig <- diag(1 - rho, n) + matrix(rep(rho, n^2), ncol = n)
+
+# Data generation
+source("mvrnormR.R")
+X <- mvrnormR(m, rep(0, n), Sig)
+Y <- Beta * rowSums(X) + matrix(rnorm(m * nY, sd = sqrt(s2)), ncol = nY)
+```
+
+Doing general calculations that can be used. We should add to these as more pre-computations become needed.
+
+```{r general-calcs}
+
+# General Calcs
+X <- scale(X)
+Y <- scale(Y)
+
+X2 <- X^2
+X3 <- X^3
+X4 <- X^4
+Y2 <- Y^2
+Y3 <- Y^3
+Y4 <- Y^4
+
+
+tX <- t(X)
+tY <- t(Y)
+tX2 <- t(X2)
+tX3 <- t(X3)
+XXt <- tcrossprod(X)
+XXt2 <- XXt^2
+
+Y4ColSums <- colSums(Y4)
+X4ColSums <- colSums(X4)
+X1RowSums <- rowSums(X)
+X2RowSums <- rowSums(X2)
+
+# Cor calcs
+xyCors <- crossprod(X, Y) / (m - 1)
+xyCors2 <- xyCors^2
+rX <- crossprod(tX, xyCors)
+r2X <- crossprod(tX, xyCors2)
+r2X2 <- crossprod(tX2, xyCors2)
+rX3 <- crossprod(tX3, xyCors)
+
+```
+
+
+The following is a sandbox to calculate various cross-terms and check them. Here is the term we need to square:
+
+\begin{align*} 
+S_{jk} & = r_{uujk} + r_{uj}r_{uk}(r_{uuuu} + r_{uujj} + r_{uukk} + r_{jjkk}) / 4\\
+& -\;r_{uj}(r_{uuuk} + r_{ujjk}) / 2 - r_{uk}(r_{uuuj} + r_{ukkj}) / 2
+\end{align*}
+
+I have written a function to calculate 9 |B| x |B| matrices, containing the components of the above sum, returned in a list. The list contains the elements A ... C4, which correspond to $S_jk$:
+\begin{align*}
+S &= A + (B1 + B2 + B3 + B4) / 4 \\
+&- (C1 + C2) / 2- (C3 + C4) / 2
+\end{align*}
+
+The usage of the function is:
+```{r mlist}
+source("tracecalcs.R")
+rm(trace_uni_fast, trace_uni)
+mlist <- trace_uni_mlist(Y[ , 1], X)
+mlists <- lapply(1:nY, function (i) trace_uni_mlist(Y[ , i], X))
+```
+...it does not take the full Y matrix. This function is useful to check the accuracy of cross-term calculation. As a first example, let's try to compute the sum over $j$ and $k$ of $A^2$:
+
+```{r Asquared}
+AAs <- lapply(1:nY, function (i) {
+  crossprod(Y2[ , i], crossprod(XXt2, Y2[ , i]))
+})
+unlist(AAs)
+unlist(lapply(mlists, function (L) sum(L$A * L$A)))
+```
+
+Unfortunately, not all cross terms are as nice. The cross-terms can be divided into 3 categories:
+
+1. Symmetric: $AA = r_{uujk}r_{uujk}$
+2. Non-symmetric, half-pairwise: $AB2 = r_{uujk}r_{uj}r_{uk}r_{uujj}$
+3. Non-symmetric, full-pairwise: $AC2 = r_{uujk}r_{uj}r_{ujjk}$
+
+Cross-terms of category (2) can be obtained by pre-computing the non-pairwise term. Cross-terms of category (3) are more difficult to deal with. I will attempt AC2:
+
+```{r AC2}
+AC2s <- lapply(1:nY, function (i) {
+  AC2mat <- crossprod(xyCors[ , i] * tX, tX2)
+  AC2 <- crossprod(Y[ , i], crossprod(AC2mat * XXt, Y2[ , i]))
+  return(AC2)
+})
+unlist(AC2s)
+unlist(lapply(mlists, function (L) sum(L$A * L$C2)))
+```
+
+I will list all the cross-terms below. If there's no code assume there is no solution. The goal is to get a vectorized version of each term, either with `lapply` or fancy matrix maniuplation. So, all results should return a vector of length `nY` (or a one by `nY` matrix). We can check them by something similar to the last line above.
+
+
+```{r first-calcs}
+
+#AA
+AAs <- lapply(1:nY, function (i) {
+  crossprod(Y2[ , i], crossprod(XXt2, Y2[ , i]))
+})
+unlist(AAs)
+unlist(lapply(mlists, function (L) sum(L$A * L$A)))
+
+
+
+#AB1
+AB1s <- lapply(1:nY, function (i) {
+  Y4ColSums[i] * crossprod(Y2[ , i], rX[ , i]^2)
+})
+unlist(AB1s)
+unlist(lapply(mlists, function (L) sum(L$A * L$B1)))
+
+
+
+#AB2
+
+
+
+
+#AB3
+#AB3 <- AB2
+
+
+
+```
+
+Miheer, I will leave it to you to begin working on vectorizing the rest. Many of these are written for just the first $Y$ vector. Feel free to deviate from the code if you see a more efficient way. Anyway, I cannot fully guarantee their accuracy as the format of the pre-computations may have shifted slightly when I added another $Y$ vector. Be sure to add a check with `mlists` after each term.
+
+```{r second-calcs}
+
+#AB4
+
+
+
+
+#AC1
+AC1vec1 <- crossprod(Y2 * rX, X)
+AC1vec2 <- crossprod(X, Y3)
+AC1 <- -AC1vec1 %*% AC1vec2
+
+#AC2
+AC2 <- AC1
+
+
+
+#AC3
+
+
+
+
+#AC4
+#AC4 <- AC3
+
+
+
+#B1^2
+B1B1 <- Y4ColSums^2 * sum(xyCors2)^2
+
+
+
+#B1B2
+B1B2 <- Y4ColSums * crossprod(Y2, r2X2) * sum(xyCors2)
+
+
+
+#B1B3
+B1B3 <- B1B2
+
+
+
+#B1B4
+B1B4 <- Y4ColSums * crossprod(r2X2)
+
+
+
+#B1C1
+B1C1 <- -Y4ColSums * sum(xyCors2) * crossprod(Y3, rX)
+
+
+
+#B1C2
+B1C2 <- B1C1
+
+
+
+#B1C3
+B1C3 <- -Y4ColSums * crossprod(Y, rX * r2X2)
+
+
+
+#B1C4
+B1C4 <- B1C3
+
+
+
+#B2^2
+
+
+
+#B2B3
+B2B3 <- crossprod(Y2, r2X2)^2
+
+
+
+#B2B4
+
+
+
+
+#B2C1
+
+
+
+
+#B2C2
+
+
+
+
+#B2C3
+
+
+
+
+#B2C4
+
+
+
+
+#B3^2
+#B3B3 <- B2B2
+
+
+
+#B3B4
+#B3B4 <- B2B4
+
+
+
+#B3C1
+#B3C1 <- B2C2
+
+
+
+#B3C2
+#B3C2 <- B2C1
+
+
+
+#B3C3
+#B3C3 <- B2C4
+
+
+
+#B3C4
+#B3C4 <- B2C3
+
+
+
+#B4^2
+
+
+
+
+#B4C1
+
+
+
+
+#B4C2
+#B4C2 <- B4C1
+
+
+
+#B4C3
+
+
+
+
+#B4C4
+#B4C4 <- B4C3
+
+
+
+#C1^2
+C1C1 <- sum(xyCors2) * crossprod(crossprod(X, Y3)) / 4
+
+
+
+#C1C2
+C1C2 <- crossprod(Y3, rX)^2 / 4
+
+
+
+#C1C3
+C1C3 <- crossprod(crossprod(X, Y3), crossprod(X, Y * r2X2)) / 4
+
+
+
+#C1C4
+
+
+
+
+#C2^2
+#C2C2 <- C1C1
+
+
+
+#C2C3
+#C2C3 <- C1C4
+
+
+
+#C2C4
+#C2C4 <- C1C3
+
+
+
+#C3^2
+
+
+
+
+#C3C4
+
+
+
+
+#C4^2
+#C4C4 <- C3C3
+  
+```
