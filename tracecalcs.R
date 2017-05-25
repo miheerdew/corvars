@@ -1,3 +1,4 @@
+library(emulator)
 trace_uni <- function (i) {
   
   # General calcs
@@ -594,3 +595,194 @@ trace_fast <- function () {
   
 }
 
+trace_large_x <- function(
+                       y, #m x 1 vector
+                       X, #m x dx matrix
+                       
+                       #Optional arguments that can be precomputed:
+                       m = nrow(X),
+                       XXt = tcrossprod(X),
+                       XXt2 = XXt^2,
+                       X2 = X^2,
+                       X3 = X^3,
+                       X4ColSums=colSums(X^4),
+                       X2RowSums=rowSums(X2)) {
+
+  e <- matrix(1, nrow=m, ncol=1)
+  y2 <- y^2 # m x 1
+  y3 <- y^3
+  
+  M <- m-1
+  r <- crossprod(y, X) / M # 1 x dx
+  r2 <- crossprod(y2, X2) / M # 1 x dx
+  r3 <- crossprod(y3,X) / M # 1 x dx
+  rX <- tcrossprod(X, r) # m x 1
+  r3X <- tcrossprod(X, r3) # m x 1
+  rX3 <- tcrossprod(X3, r) # m x 1
+
+  
+  rSq <- r^2
+  rSqX2 <- tcrossprod(X2,rSq) # m x 1
+  r2rSqX2 <- tcrossprod(X2, r2 * rSq) # m x 1
+  r3rX2 <- tcrossprod(X2, r3*r) # m x 1
+  
+  Xr <- sweep(X, MARGIN = 2, r,`*`) # m x dx
+
+  y4Sum <- sum(y^4) # scalar
+  rSqSum <- sum(rSq) #scalar
+  
+  Z1 <- tcrossprod(X2, Xr) # m x m
+  Z2 <- tcrossprod(X2, Xr^2) # m x m
+  
+  #All of these are scalars
+  #TODO: Normalize them by (m-1)^2 after they are working correctly.
+  
+  AA <- quad.form(XXt2, y2)
+  
+  AB1 <- y4Sum * crossprod(y2, rX^2)
+  
+  AB2 <- quad.3form(XXt, y, y2 * tcrossprod(X, r2*r))
+  
+  AB3 <- AB2
+  
+  AB4 <- quad.3form(Z1^2, e, y2)
+  
+  AC1 <- crossprod(rX * r3X, y2) * M
+  
+  AC2 <- quad.3form(Z1 * XXt, y, y2)
+  
+  AC3 <- AC1
+  
+  AC4 <- AC2
+  
+  B1B1 <- (y4Sum*rSqSum)^2
+  
+  B1B2 <- rSqSum * y4Sum * tcrossprod(r2,rSq) * M
+  
+  B1B3 <- B1B2
+  
+  B1B4 <- y4Sum * sum(rSqX2^2)
+  
+  B1C1 <- y4Sum * rSqSum * tcrossprod(r,r3) * M
+  
+  B1C2 <- y4Sum * crossprod(y, rX * rSqX2)
+  
+  B1C3 <- B1C1
+  
+  B1C4 <- B1C2
+    
+  B2B2 <- tcrossprod(rSq, r2^2) * rSqSum * M^2
+  
+  B2B3 <- tcrossprod(rSq, r2)^2 * M^2
+  
+  B2B4 <- sum(rSqX2 * r2rSqX2) * M
+  
+  B2C1 <- tcrossprod(rSq, r2) * tcrossprod(r,r3) * M^2
+  
+  B2C2 <- crossprod(y, r2rSqX2 * rX) * M
+  
+  B2C3 <- sum(r * r2 * r3) * rSqSum * M^2
+  
+  B2C4 <- crossprod(y, tcrossprod(X, r * r2) * rSqX2) * M
+  
+  B3B3 <- B2B2
+  
+  B3B4 <- B2B4
+  
+  B3C1 <- B2C3
+  
+  B3C2 <- B2C4
+  
+  B3C3 <- B2C1
+  
+  B3C4 <- B2C2
+  
+
+  
+  B4B4 <- sum(Z2^2)
+  
+  B4C1 <- sum(rSqX2 * r3rX2) * M
+  
+  B4C2 <- quad.3form(Z2 * Z1, e, y)
+  
+  B4C3 <- B4C1
+  
+  B4C4 <- B4C2
+  
+  C1C1 <- rSqSum * sum(r3^2) * M^2
+  
+  C1C2 <- crossprod(y, rSqX2 * r3X) * M
+  
+  C1C3 <- sum(r * r3)^2 * M^2
+  
+  C1C4 <- crossprod(y, rX * r3rX2) * M
+  
+  C2C2 <- quad.form(Z2 * XXt, y)
+  
+  C2C3 <- C1C4
+  
+  C2C4 <- quad.form(Z1*t(Z1), y)
+  
+  C3C3 <- C1C1
+  
+  C3C4 <- C1C2
+  
+  C4C4 <- C2C2
+  
+  resvec <- c(AA, c(AB1, AB2,  AB3,  AB4)/4, -1/2*c( AC1,  AC2,  AC3,  AC4),
+               c(B1B1, B1B2, B1B3, B1B4)/16, -1/8*c(B1C1, B1C2, B1C3, B1C4),
+                     c(B2B2, B2B3, B2B4)/16, -1/8*c(B2C1, B2C2, B2C3, B2C4),
+                           c(B3B3, B3B4)/16, -1/8*c(B3C1, B3C2, B3C3, B3C4),
+                                    B4B4/16, -1/8*c(B4C1, B4C2, B4C3, B4C4),
+                                          c(C1C1, C1C2, C1C3, C1C4,
+                                                C2C2, C2C3, C2C4,
+                                                      C3C3, C3C4,
+                                                            C4C4)/4)
+  resmat <- matrix(0, 9, 9)
+  resmat[row(resmat) >= col(resmat)] <- resvec
+  trprod <- sum(diag(resmat)) + 2 * sum(resmat[row(resmat) > col(resmat)])
+  
+  #Trace of straight up varmat
+  star1 <- crossprod(y2, X2RowSums) #O(m)
+  star2 <- y4Sum * rSqSum 
+  star3 <- crossprod(y2, rSqX2) #O(m) 
+  star4 <- tcrossprod(rSq, X4ColSums) #O(n)
+  dagger1 <- crossprod(y3, rX) #O(m)
+  dagger2 <- crossprod(y, rX3) #O(m)
+  trmat <- star1 + (star2 + 2 * star3 + star4) / 4 - dagger1 - dagger2
+  
+  return(c(trmat/M, trprod/M^2))
+}
+
+trace_kosher <- function(y, X){
+  n <- ncol(X)
+  y2 <- y^2
+  y3 <- y^3
+  M <- nrow(X) - 1
+  
+  u4 <- sum(y^4)/M
+    
+  s <- function(j,k){
+    xj <- X[,j]
+    xk <- X[,k]
+    
+    xj2 <- xj^2
+    xk2 <- xk^2
+    
+    u2jk <- sum(y2*xk*xj)/M
+    uj <- sum(y*xj)/M
+    uk <- sum(y*xk)/M
+    u2j2 <- sum(y2*xj2)/M
+    u2k2 <- sum(y2*xk2)/M
+    j2k2 <- sum(xj2*xk2)/M
+    u3k <- sum(y3*xk)/M
+    uj2k <- sum(y*xj2*xk)/M
+    u3j <- sum(y3*xj)/M
+    uk2j <- sum(y*xk2*xj)/M
+    
+    u2jk  + uj*uk*(u4 + u2j2 + u2k2 + j2k2)/4 - uj*(u3k + uj2k)/2 - uk*(u3j + uk2j)/2
+  }
+  
+  S <- outer(seq(n), seq(n), Vectorize(s))
+  c(sum(diag(S)), sum(S^2))
+}
