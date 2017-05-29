@@ -796,16 +796,16 @@ trace_kosher <- function(y, X){
 
 
 trace_large_x_indx <- function (i) {
-  
+  m <- ndata
   y <- Y[ , i]
   e <- matrix(1, nrow=m, ncol=1)
-  y2 <- Y2[ , i]^2 # m x 1  ## GET THIS FROM Y2
-  y3 <- Y3[ , i]^3 ## GET THIS FROM Y3
+  y2 <- Y2[ , i] # m x 1  ## GET THIS FROM Y2
+  y3 <- Y3[ , i] ## GET THIS FROM Y3
   
   M <- m-1
   r <- allr[i, , drop = FALSE] / M # 1 x dx ## GET THIS FROM allr
   r2 <- crossprod(y2, X2) / M # 1 x dx
-  r3 <- crossprod(y3,X) / M # 1 x dx
+  r3 <- crossprod(y3, X) / M # 1 x dx
   rX <- tcrossprod(X, r) # m x 1
   r3X <- tcrossprod(X, r3) # m x 1
   rX3 <- tcrossprod(X3, r) # m x 1
