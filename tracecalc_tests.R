@@ -47,14 +47,18 @@ for (sim in 1:nsims) {
   X1RowSums <- rowSums(X)
   X2RowSums <- rowSums(X2)
   
+  allr <- crossprod(Y, X)
+  
   # Trace calcs
   trace_uni(1)
   mlist <- trace_uni_mlist(Y[ , 1], X)
   unlist(mlist[c("tr1", "tr2")])
   trace_large_x(Y[ , 1], X)
+  trace_large_x_indx(i)
   trace_kosher(Y[ , 1], X)
   
 }
+
 
 pvals <- pchisq(ndata * cors / as, df = bs, lower.tail = FALSE)
 plot(-log10(seq_along(pvals) / (length(pvals) + 1)), -log10(sort(pvals)))
