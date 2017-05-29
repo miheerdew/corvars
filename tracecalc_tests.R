@@ -2,7 +2,15 @@ library(rbenchmark)
 source("mvrnormR.R")
 source("tracecalcs.R")
 
+m <- 500
+mY <- 100
+rho <- 0.5
+nsims <- 1000
+ndata <- 100
+Beta <- 0
+s2 <- 1
 
+Sig <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
 
 set.seed(12345)
 
@@ -13,6 +21,8 @@ for (sim in 1:nsims) {
   # Data generation
   X <- mvrnormR(ndata, rep(0, m), Sig)
   Y <- Beta * rowSums(X) + matrix(rnorm(ndata * mY, sd = sqrt(s2)), ncol = mY)
+  X <- as.matrix(scale(X))
+  Y <- as.matrix(scale(Y))
   
   # General Calcs
   n <- nrow(X)
@@ -32,16 +42,23 @@ for (sim in 1:nsims) {
   XXt <- tcrossprod(X)
   XXt2 <- XXt^2
   
-  Y4ColSums <- sum(Y4)
+  Y4ColSums <- colSums(Y4)
   X4ColSums <- colSums(X4)
   X1RowSums <- rowSums(X)
   X2RowSums <- rowSums(X2)
   
+  allr <- crossprod(Y, X)
+  
   # Trace calcs
   trace_uni(1)
-  trace_uni_fast()
+  mlist <- trace_uni_mlist(Y[ , 1], X)
+  unlist(mlist[c("tr1", "tr2")])
+  trace_large_x(Y[ , 1], X)
+  trace_large_x_indx(i)
+  trace_kosher(Y[ , 1], X)
   
 }
+
 
 pvals <- pchisq(ndata * cors / as, df = bs, lower.tail = FALSE)
 plot(-log10(seq_along(pvals) / (length(pvals) + 1)), -log10(sort(pvals)))
