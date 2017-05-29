@@ -3,10 +3,10 @@ source("tracecalcs.R")
 
 set.seed(12345678)
 
-n <- 500
+n <- 10000
 nY <- 1000
 rho <- 0.5
-m <- 50
+m <- 200
 Beta <- 0
 s2 <- 1
 Sig <- diag(1 - rho, n) + matrix(rep(rho, n^2), ncol = n)
@@ -24,10 +24,11 @@ p <- profvis::profvis({
   X3 <- X^3
   X4ColSums <- colSums(X^4)
   X2RowSums <- rowSums(X2)
-  
-  res <- sapply(1:nY, function(i) 
-    trace_large_x(Y[,i], X, m, XXt, XXt2, X2, X3, X4ColSums, X2RowSums)
+  tX <- t(X)
+
+  res <- sapply(1:nY, function(i)
+    trace_large_x(Y[,i], X, m, XXt, XXt2, X2, X3, X4ColSums, X2RowSums, tX)
     )
 })
 
-#show(p)
+print(p)

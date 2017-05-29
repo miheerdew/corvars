@@ -613,7 +613,8 @@ trace_large_x <- function(
                        X2 = X^2,
                        X3 = X^3,
                        X4ColSums=colSums(X^4),
-                       X2RowSums=rowSums(X2)) {
+                       X2RowSums=rowSums(X2),
+                       tX = t(X)) {
 
   e <- matrix(1, nrow=m, ncol=1)
   y2 <- y^2 # m x 1
@@ -633,13 +634,13 @@ trace_large_x <- function(
   r2rSqX2 <- tcrossprod(X2, r2 * rSq) # m x 1
   r3rX2 <- tcrossprod(X2, r3*r) # m x 1
   
-  Xr <- sweep(X, MARGIN = 2, r,`*`) # m x dx
+  tXr <- tX * as.vector(r) # dx x m
 
   y4Sum <- sum(y^4) # scalar
   rSqSum <- sum(rSq) #scalar
   
-  Z1 <- tcrossprod(X2, Xr) # m x m
-  Z2 <- tcrossprod(X2, Xr^2) # m x m
+  Z1 <- X2 %*% tXr # m x m
+  Z2 <- X2 %*% tXr^2 # m x m
   
   #All of these are scalars
   #TODO: Normalize them by (m-1)^2 after they are working correctly.
@@ -816,13 +817,13 @@ trace_large_x_indx <- function (i) {
   r2rSqX2 <- tcrossprod(X2, r2 * rSq) # m x 1
   r3rX2 <- tcrossprod(X2, r3*r) # m x 1
   
-  Xr <- sweep(X, MARGIN = 2, r,`*`) # m x dx
+  tXr <- tX * as.vector(r) # dx x m
   
   y4Sum <- Y4ColSums[i] # scalar ## GET THIS FROM Y4ColSums
   rSqSum <- sum(rSq) #scalar
   
-  Z1 <- tcrossprod(X2, Xr) # m x m
-  Z2 <- tcrossprod(X2, Xr^2) # m x m
+  Z1 <- X2 %*% tXr # m x m
+  Z2 <- X2 %*% tXr^2 # m x m
   
   #All of these are scalars
   #TODO: Normalize them by (m-1)^2 after they are working correctly.

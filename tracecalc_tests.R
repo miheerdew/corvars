@@ -54,7 +54,7 @@ for (sim in 1:nsims) {
   mlist <- trace_uni_mlist(Y[ , 1], X)
   unlist(mlist[c("tr1", "tr2")])
   trace_large_x(Y[ , 1], X)
-  trace_large_x_indx(i)
+  trace_large_x_indx(1)
   trace_kosher(Y[ , 1], X)
   
 }
