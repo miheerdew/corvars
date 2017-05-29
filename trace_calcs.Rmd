@@ -23,6 +23,7 @@ s2 <- 1
 Sig <- diag(1 - rho, n) + matrix(rep(rho, n^2), ncol = n)
 
 # Data generation
+set.seed(12345)
 source("mvrnormR.R")
 X <- mvrnormR(m, rep(0, n), Sig)
 Y <- Beta * rowSums(X) + matrix(rnorm(m * nY, sd = sqrt(s2)), ncol = nY)
@@ -98,7 +99,7 @@ S &= A + (B1 + B2 + B3 + B4) / 4 \\
 The usage of the function is:
 ```{r mlist}
 source("tracecalcs.R")
-rm(trace_uni_fast, trace_uni)
+rm(trace_uni)
 mlist <- trace_uni_mlist(Y[ , 1], X)
 mlists <- lapply(1:nY, function (i) trace_uni_mlist(Y[ , i], X))
 

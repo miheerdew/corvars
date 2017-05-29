@@ -1,4 +1,5 @@
 library(emulator)
+
 trace_uni <- function (i) {
   
   # General calcs
@@ -10,7 +11,7 @@ trace_uni <- function (i) {
   S1 <- crossprod(as.vector(Y[ , i]) * X)
   
   # star 2
-  S2 <- Y4ColSums * tcrossprod(xyCors)
+  S2 <- Y4ColSums[i] * tcrossprod(xyCors)
   
   # star 3
   S3 <- tcrossprod(xyCors, xyCors * colSums(X2 * as.vector(Y2[ , i])))
@@ -67,8 +68,14 @@ trace_uni_mlist <- function (Yvec, Xmat) {
   # dagger 2
   D2 <- t(crossprod(Yvec * Xmat, Xmat^2)) * xyCors
   
+  # traces
+  bigmat <- (S1 + (S2 + S3 + t(S3) + S4) / 4 - (D1 + t(D1) + D2 + t(D2)) / 2) / (n - 1)
+  trSig <- sum(diag(bigmat))
+  trSig2 <- sum(diag(crossprod(bigmat)))
+  
   return(list(A = S1, B1 = S2, B2 = S3, B3 = t(S3), B4 = S4,
-              C1 = t(D1), C2 = t(D2), C3 = D1, C4 = D2))
+              C1 = t(D1), C2 = t(D2), C3 = D1, C4 = D2,
+              tr1 = trSig, tr2 = trSig2))
   
 }
 
