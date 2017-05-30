@@ -50,6 +50,7 @@ for (sim in 1:nsims) {
   X2RowSums <- rowSums(X2)
   
   allr <- crossprod(Y, X)
+  allrSums <- rowSums(allr)
   allr22 <- crossprod(Y2, X2)
   allr31 <- crossprod(Y3, X)
   

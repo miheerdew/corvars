@@ -3,8 +3,8 @@ library(emulator)
 trace_uni <- function (i) {
   
   # General calcs
-  xyCors <- as.vector(crossprod(Y[ , i], X)) / (n - 1)
-  r <- sum(xyCors)
+  xyCors <- as.vector(allr[i, ]) / (n - 1)
+  r <- allrSums[i]
   rX2 <- crossprod(tX2, xyCors)
   
   # star 1
