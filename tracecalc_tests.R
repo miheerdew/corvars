@@ -4,7 +4,7 @@ source("tracecalcs.R")
 
 m <- 500
 mY <- 100
-rho <- 0.5
+rho <- 0
 nsims <- 1000
 ndata <- 100
 Beta <- 0
@@ -48,14 +48,31 @@ for (sim in 1:nsims) {
   X2RowSums <- rowSums(X2)
   
   allr <- crossprod(Y, X)
+  allr22 <- crossprod(Y2, X2)
+  allr31 <- crossprod(Y3, X)
   
   # Trace calcs
-  trace_uni(1)
-  mlist <- trace_uni_mlist(Y[ , 1], X)
-  unlist(mlist[c("tr1", "tr2")])
-  trace_large_x(Y[ , 1], X)
-  trace_large_x_indx(1)
-  trace_kosher(Y[ , 1], X)
+  #trace_uni(1)
+  #mlist <- trace_uni_mlist(Y[ , 1], X)
+  #unname(unlist(mlist[c("tr1", "tr2")]))
+  #trace_large_x(Y[ , 1], X)
+  traces <- sapply(1:ncol(Y), trace_large_x_indx)
+  as <- traces[2, ] / traces[1, ]
+  bs <- traces[1, ]^2 / traces[2, ]
+  Ts <- rowSums(allr^2)
+  ps <- pchisq(Ts / as, df = bs, lower.tail = FALSE)
+  
+  #trace_kosher(Y[ , 1], X)
+  
+  
+  if (sim == 1) {
+    cat("doing timing for the first sim\n")
+    timeres <- benchmark(trace_uni = trace_uni(1),
+                         trace_uni_mlist = trace_uni_mlist(Y[ , 1], X),
+                         trace_large_x = trace_large_x(Y[ , 1], X),
+                         trace_large_x_indx = trace_large_x_indx(1))
+  }
+                     
   
 }
 
