@@ -3,8 +3,8 @@ source("mvrnormR.R")
 source("tracecalcs.R")
 
 m <- 500
-mY <- 100
-rho <- 0
+mY <- 1
+rho <- 0.4
 nsims <- 1000
 ndata <- 100
 Beta <- 0
@@ -13,6 +13,8 @@ s2 <- 1
 Sig <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
 
 set.seed(12345)
+
+as <- bs <- Ts <- ps <- numeric(nsims)
 
 for (sim in 1:nsims) {
   
@@ -56,14 +58,13 @@ for (sim in 1:nsims) {
   #mlist <- trace_uni_mlist(Y[ , 1], X)
   #unname(unlist(mlist[c("tr1", "tr2")]))
   #trace_large_x(Y[ , 1], X)
-  traces <- sapply(1:ncol(Y), trace_large_x_indx)
-  as <- traces[2, ] / traces[1, ]
-  bs <- traces[1, ]^2 / traces[2, ]
-  Ts <- rowSums(allr^2)
-  ps <- pchisq(Ts / as, df = bs, lower.tail = FALSE)
-  
   #trace_kosher(Y[ , 1], X)
   
+  trs <- trace_large_x_indx(1)
+  as[sim] <- trs[2] / trs[1]
+  bs[sim] <- trs[1]^2 / trs[2]
+  Ts[sim] <- rowSums(allr^2 / (ndata - 1)^2)
+  ps[sim] <- pchisq(ndata * Ts[sim] / as[sim], df = bs[sim], lower.tail = FALSE)
   
   if (sim == 1) {
     cat("doing timing for the first sim\n")
@@ -76,28 +77,6 @@ for (sim in 1:nsims) {
   
 }
 
-
-pvals <- pchisq(ndata * cors / as, df = bs, lower.tail = FALSE)
-plot(-log10(seq_along(pvals) / (length(pvals) + 1)), -log10(sort(pvals)))
+plot(-log10(seq_along(ps) / (length(ps) + 1)), -log10(sort(ps)))
 abline(0, 1)
 
-
-
-corscov <- cov(t(corsmat)) * ndata
-hist(diag(corscov))
-abline(v = diagVar, col = "red")
-hist(corscov[row(corscov) != col(corscov)])
-abline(v = offdVar, col = "red")
-
-
-Sig <- matrix(0, m, m)
-diag(Sig) <- diagVar
-Sig[row(Sig) != col(Sig)] <- offdVar
-trSig <- sum(diag(Sig))
-trSig2 <- sum(diag(crossprod(Sig)))
-a <- trSig2 / trSig; b <- trSig^2 / trSig2
-
-pvals <- pchisq(cors / a, df = b, lower.tail = FALSE)
-#pvals <- pchisq(ndata * cors, df = m, lower.tail = FALSE)
-hist(pvals)
-#hist(sqrt(ndata) * colSums(corsmat) / sqrt(sum(Sig)))

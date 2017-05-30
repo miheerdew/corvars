@@ -116,9 +116,9 @@ varmat_uni <- function (Yvec, Xmat) {
   
   trSig <- sum(diag(bigmat))
   trSig2 <- sum(diag(crossprod(bigmat)))
-  a <- trSig2 / trSig; b <- trSig^2 / trSig2
+  #a <- trSig2 / trSig; b <- trSig^2 / trSig2
   
-  return(list(a, b))
+  return(c(trSig, trSig2))
   
 }
 
