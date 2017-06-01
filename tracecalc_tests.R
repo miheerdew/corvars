@@ -2,11 +2,11 @@ library(rbenchmark)
 source("mvrnormR.R")
 source("tracecalcs.R")
 
-m <- 500
+m <- 100
 mY <- 1
-rho <- 0.4
+rho <- 0
 nsims <- 1000
-ndata <- 100
+ndata <- 1000
 Beta <- 0
 s2 <- 1
 
@@ -57,27 +57,36 @@ for (sim in 1:nsims) {
   # Trace calcs
   #trace_uni(1)
   #mlist <- trace_uni_mlist(Y[ , 1], X)
-  #unname(unlist(mlist[c("tr1", "tr2")]))
+  #trs <- unname(unlist(mlist[c("tr1", "tr2")]))
   #trace_large_x(Y[ , 1], X)
   #trace_kosher(Y[ , 1], X)
   
-  trs <- trace_large_x_indx(1)
+  trs <- trace_indx(1)
   as[sim] <- trs[2] / trs[1]
   bs[sim] <- trs[1]^2 / trs[2]
   Ts[sim] <- rowSums(allr^2 / (ndata - 1)^2)
   ps[sim] <- pchisq(ndata * Ts[sim] / as[sim], df = bs[sim], lower.tail = FALSE)
-  
-  if (sim == 1) {
+  if (FALSE) {
     cat("doing timing for the first sim\n")
-    timeres <- benchmark(trace_uni = trace_uni(1),
-                         trace_uni_mlist = trace_uni_mlist(Y[ , 1], X),
-                         trace_large_x = trace_large_x(Y[ , 1], X),
-                         trace_large_x_indx = trace_large_x_indx(1))
+    timeres <- benchmark(#trace_uni = trace_uni(1),
+                         #trace_uni_mlist = trace_uni_mlist(Y[ , 1], X),
+                         #trace_large_x = trace_large_x(Y[ , 1], X),
+                         trace_uni_fast = trace_uni_fast(1),
+                         trace_large_x_indx = trace_large_x_indx(1),
+                         trace_indx = trace_indx(1))
   }
-                     
-  
 }
 
 plot(-log10(seq_along(ps) / (length(ps) + 1)), -log10(sort(ps)))
 abline(0, 1)
 
+#What metric to quantify deviation from normal.
+#What exactly is this p-value.
+#Why is there a dependence b/w rho and chisq approximation.
+#For rho=0, beta=0 dependence is not uniform.
+#Test with the R versions as Rcpp gains are just parallelization.
+#Optimize trace_mlist_uni.
+#The error perhaps depends on m. Rho \approx 1 behaves like m=1.
+# Check closeness to uniform distribution.
+# Compare Ropen vs R par
+# Correations are 0, S is identity (check).
