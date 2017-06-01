@@ -4,7 +4,6 @@ trace_uni <- function (i) {
   
   # General calcs
   xyCors <- as.vector(allr[i, ]) / (n - 1)
-  r <- allrSums[i]
   rX2 <- crossprod(tX2, xyCors)
   
   # star 1

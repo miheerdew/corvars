@@ -36,7 +36,6 @@ for (sim in 1:nsims) {
   Y3 <- Y^3
   Y4 <- Y^4
   
-  
   tX <- t(X)
   tY <- t(Y)
   tX2 <- t(X2)
@@ -50,7 +49,6 @@ for (sim in 1:nsims) {
   X2RowSums <- rowSums(X2)
   
   allr <- crossprod(Y, X)
-  allrSums <- rowSums(allr)
   allr22 <- crossprod(Y2, X2)
   allr31 <- crossprod(Y3, X)
   
