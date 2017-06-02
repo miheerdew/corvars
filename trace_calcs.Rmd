@@ -1,0 +1,536 @@
+---
+title: "Trace cross-product calculations"
+author: "John Palowitch, Miheer Dewaskar"
+date: "May 16, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+Setting parameters for the simulation, and generating data:
+
+```{r sim-params}
+n <- 500
+nY <- 2
+rho <- 0.5
+m <- 100
+Beta <- 0
+s2 <- 1
+Sig <- diag(1 - rho, n) + matrix(rep(rho, n^2), ncol = n)
+
+# Data generation
+set.seed(12345)
+source("mvrnormR.R")
+X <- mvrnormR(m, rep(0, n), Sig)
+Y <- Beta * rowSums(X) + matrix(rnorm(m * nY, sd = sqrt(s2)), ncol = nY)
+```
+
+Doing general calculations that can be used. We should add to these as more pre-computations become needed.
+
+```{r general-calcs}
+
+# General Calcs
+X <- scale(X)
+Y <- scale(Y)
+
+X2 <- X^2
+X3 <- X^3
+X4 <- X^4
+Y2 <- Y^2
+Y3 <- Y^3
+Y4 <- Y^4
+
+
+tX <- t(X)
+tY <- t(Y)
+tY2 <- t(Y2)
+tX2 <- t(X2)
+tX3 <- t(X3)
+
+
+Y4ColSums <- colSums(Y4)
+X4ColSums <- colSums(X4)
+X1RowSums <- rowSums(X)
+X2RowSums <- rowSums(X2)
+
+
+# Cor calcs
+xyCors <- crossprod(X, Y) / (m - 1)
+xyCors2 <- xyCors^2
+xyCors2ColSums <- colSums(xyCors2)
+rX <- crossprod(tX, xyCors)
+r2X <- crossprod(tX, xyCors2)
+r2X2 <- X2 %*% xyCors2 
+rX3 <- crossprod(tX3, xyCors)
+rX2 <- crossprod(tX2, xyCors)
+
+r <- crossprod(Y,X) / (m - 1) #r <- t(xyCor)[A,]
+r2 <- crossprod(Y2, X2) / (m - 1) # similar to above.
+r_squared <- r^2
+r3 <- crossprod(Y3,X) / (m - 1)
+r3X <- tcrossprod(X, r3)
+rr3X2 <- tcrossprod(X2, r*r3)
+```
+
+These calculations have to be done for every set $A$:
+```{r localcalcs}
+XXt <- tcrossprod(X)
+XXt2 <- XXt^2
+XX2t <- X %*% tX2
+```
+
+The following is a sandbox to calculate various cross-terms and check them. Here is the term we need to square:
+
+\begin{align*} 
+S_{jk} & = r_{uujk} + r_{uj}r_{uk}(r_{uuuu} + r_{uujj} + r_{uukk} + r_{jjkk}) / 4\\
+& -\;r_{uj}(r_{uuuk} + r_{ujjk}) / 2 - r_{uk}(r_{uuuj} + r_{ukkj}) / 2
+\end{align*}
+
+I have written a function to calculate 9 |B| x |B| matrices, containing the components of the above sum, returned in a list. The list contains the elements A ... C4, which correspond to $S_{jk}$:
+\begin{align*}
+S &= A + (B1 + B2 + B3 + B4) / 4 \\
+&- (C1 + C2) / 2- (C3 + C4) / 2
+\end{align*}
+
+The usage of the function is:
+```{r mlist}
+source("tracecalcs.R")
+rm(trace_uni)
+mlist <- trace_uni_mlist(Y[ , 1], X)
+mlists <- lapply(1:nY, function (i) trace_uni_mlist(Y[ , i], X))
+
+#The string terms
+sb <- "r_{uj}r_{uk}"
+sTerms <- list(A = "r_{uujk}",
+              B1 = paste(sb, "r_{uuuu}"),
+              B2 = paste(sb, "r_{uujj}"),
+              B3 = paste(sb, "r_{uukk}"),
+              B4 = paste(sb, "r_{jjkk}"),
+              C1 = "r_{uj}r_{uuuk}",
+              C2 = "r_{uj}r_{ujjk}",
+              C3 = "r_{uk}r_{uuuj}",
+              C4 = "r_{uk}r_{ukkj}")
+
+result <- function(t1,t2) {
+  sapply(mlists, function (L) sum(L[[t1]] * L[[t2]]))
+}
+
+term <- function(t1,t2) {
+  sprintf("\\sum_{j, k} %s %s", sTerms[[t1]], sTerms[[t2]])
+}
+
+check <- function(t1, t2, val){
+  all.equal(val,result(t1,t2))
+}
+
+```
+...it does not take the full Y matrix. This function is useful to check the accuracy of cross-term calculation. As a first example, let's try to compute the sum over $j$ and $k$ of $A^2$:
+
+```{r Asquared}
+AAs <- sapply(1:nY, function (i) {
+  crossprod(Y2[ , i], crossprod(XXt2, Y2[ , i]))
+})
+check("A","A", AAs)
+```
+
+**Should we normalize the terms by $(m-1)^2$?**
+
+Unfortunately, not all cross terms are as nice. The cross-terms can be divided into 3 categories:
+
+1. Symmetric: $AA = r_{uujk}r_{uujk}$
+2. Non-symmetric, half-pairwise: $AB2 = r_{uujk}r_{uj}r_{uk}r_{uujj}$
+3. Non-symmetric, full-pairwise: $AC2 = r_{uujk}r_{uj}r_{ujjk}$
+
+Cross-terms of category (2) can be obtained by pre-computing the non-pairwise term. Cross-terms of category (3) are more difficult to deal with. I will attempt AC2:
+
+```{r AC2-first}
+AC2s <- sapply(1:nY, function (i) {
+  AC2mat <- crossprod(r[i,] * tX, tX2)
+  AC2 <- crossprod(Y[ , i], crossprod(AC2mat * XXt, Y2[ , i]))
+  return(AC2)
+})
+check("A","C2", AC2s)
+```
+
+I will list all the cross-terms below. If there's no code assume there is no solution. The goal is to get a vectorized version of each term, either with `lapply` or fancy matrix maniuplation. So, all results should return a vector of length `nY` (or a one by `nY` matrix). We can check them by something similar to the last line above.
+
+$`r term("A","A")`$
+```{r AA}
+#AA
+AAs <- sapply(1:nY, function (i) {
+  crossprod(Y2[ , i], crossprod(XXt2, Y2[ , i]))
+})
+check("A","A", AAs)
+```
+$`r term("A","B1")`$
+```{r AB1}
+#AB1
+AB1s <- sapply(1:nY, function (i) {
+  Y4ColSums[i] * crossprod(Y2[ , i], rX[ , i]^2)
+})
+check("A","B1", AB1s)
+```
+
+$`r term("A","B2")`$
+```{r AB2}
+#AB2
+#
+Z <- tY2 * tcrossprod(r2 * r, X)
+AB2s <- sapply(1:nY, function(i){
+  crossprod(Y[,i], XXt) %*% Z[i,]
+})
+check("A","B2",AB2s)
+```
+
+$`r term("A","B3")`$
+```{r AB3}
+#AB3
+AB3s <- AB2s
+check("A","B3", AB3s)
+```
+
+Miheer, I will leave it to you to begin working on vectorizing the rest. Many of these are written for just the first $Y$ vector. Feel free to deviate from the code if you see a more efficient way. Anyway, I cannot fully guarantee their accuracy as the format of the pre-computations may have shifted slightly when I added another $Y$ vector. Be sure to add a check with `mlists` after each term.
+
+
+$`r term("A","B4")`$
+```{r AB4}
+#AB4
+AB4s <- sapply(1:nY, function(u){
+  colSums((X2 %*% (tX * xyCors[,u]))^2) %*% Y2[,u]
+})
+check("A","B4", AB4s)
+```
+
+$`r term("A","C1")`$
+```{r AC1}
+
+#AC1
+AC1vec1 <- crossprod(Y2 * rX, X)
+AC1vec2 <- crossprod(X, Y3)
+AC1s <- sapply(1:nY, function(u) {
+  AC1vec1[u,] %*% AC1vec2[,u]
+})
+check("A","C1", AC1s)
+```
+
+$`r term("A","C2")`$
+```{r AC2}
+#AC2
+
+#TODO: Reuse this common computation from AB4
+AC2s <- sapply(1:nY, function(u){
+  crossprod(Y[,u], (X2 %*% (tX * xyCors[,u])) * XXt) %*% Y2[,u]
+})
+check("A","C2", AC2s)
+```
+
+$`r term("A","C3")`$
+```{r AC3}
+#AC3
+AC3s <- AC1s
+check("A","C3", AC3s)
+```
+
+$`r term("A","C4")`$
+```{r AC4}
+#AC4
+AC4s <- AC2s
+check("A","C4", AC4s)
+```
+
+$`r term("B1","B1")`$
+```{r B1B1}
+#B1^2
+B1B1s <- Y4ColSums^2 * xyCors2ColSums^2
+check("B1","B1", B1B1s)
+```
+
+$`r term("B1","B2")`$
+```{r B1B2}
+#B1B2
+B1B2s <- sapply(1:nY, function(u){
+  Y4ColSums[u] * (r2[u,] %*% xyCors2[,u]) * xyCors2ColSums[u]
+}) * (m-1) #Because mlist forgets the normalization.
+check("B1","B2", B1B2s)
+```
+
+$`r term("B1","B3")`$
+```{r B1B3}
+#B1B3
+B1B3s <- B1B2s
+check("B1","B3", B1B3s)
+```
+
+$`r term("B1","B4")`$
+```{r B1B4}
+#B1B4
+B1B4s <- Y4ColSums * colSums(r2X2^2)
+check("B1","B4", B1B4s) 
+```
+
+$`r term("B1","C1")`$
+```{r B1C1}
+#B1C1
+B1C1s <- sapply(1:nY, function(u) {
+  Y4ColSums[u] * xyCors2ColSums[u] * crossprod(r[u,], r3[u,])
+}) * (m-1)
+check("B1","C1", B1C1s)
+```
+
+$`r term("B1","C2")`$
+```{r B1C2}
+#B1C2
+Z <- rX * r2X2
+B1C2s <- sapply(1:nY, function(u) {
+  Y4ColSums[u] * crossprod(Y[,u], Z[,u])
+})
+check("B1","C2", B1C2s)
+```
+
+$`r term("B1","C3")`$
+```{r B1C3}
+#B1C3
+B1C3s <- B1C1s
+check("B1","C3", B1C3s)
+```
+
+$`r term("B1","C4")`$
+```{r B1C4}
+#B1C4
+B1C4s <- B1C2s
+check("B1","C4", B1C4s)
+```
+
+$`r term("B2","B2")`$
+```{r B2B2}
+#B2^2
+B2B2s <- sapply(1:nY, function(u){
+  crossprod(r_squared[u,], r2[u,]^2) * sum(xyCors2[,u]) 
+}) * (m-1)^2
+
+check("B2","B2", B2B2s)
+```
+
+$`r term("B2","B3")`$
+```{r B2B3}
+#B2B3
+B2B3s <- sapply(1:nY, function (u) {
+  crossprod(r_squared[u,], r2[u,])^2
+}) * (m-1)^2
+
+check("B2","B3", B2B3s)
+```
+
+$`r term("B2","B4")`$
+```{r B2B4}
+#B2B4
+rsqr2 <- r_squared * r2
+rsqr2X2 <- tcrossprod(X2, rsqr2)
+B2B4s <- colSums(rsqr2X2 * r2X2) * (m-1)
+check("B2","B4", B2B4s)
+```
+
+$`r term("B2","C1")`$
+```{r B2C1}
+#B2C1
+B2C1s <- sapply(1:nY, function(u) {
+  crossprod(r_squared[u,], r2[u,]) * crossprod(r[u,],r3[u,])
+}) * (m-1)^2
+check("B2","C1", B2C1s)
+```
+
+$`r term("B2","C2")`$
+```{r B2C2}
+#B2C2
+Z <- rsqr2X2 * rX
+B2C2s <- sapply(1:nY, function(u) {
+  crossprod(Y[,u], Z[,u])
+}) * (m-1)
+check("B2","C2", B2C2s)
+```
+
+$`r term("B2","C3")`$
+```{r B2C3}
+#B2C3
+B2C3s <- rowSums(r * r2 * r3) * rowSums(r_squared) * (m-1)^2
+check("B2","C3", B2C3s)
+```
+
+$`r term("B2","C4")`$
+```{r B2C4}
+#B2C4
+Z <- tcrossprod(X, r * r2) * r2X2
+B2C4s <- sapply(1:nY, function(u) {
+  crossprod(Y[,u], Z[,u])
+}) * (m-1)
+check("B2","C4", B2C4s)
+```
+$`r term("B3","B3")`$
+```{r B3B3}
+#B3^2
+B3B3s <- B2B2s
+check("B3","B3", B3B3s)
+```
+
+$`r term("B3","B4")`$
+```{r B3B4}
+#B3B4
+B3B4s <- B2B4s
+check("B3","B4", B3B4s)
+```
+
+$`r term("B3","C1")`$
+```{r B3C1}
+#B3C1
+B3C1s <- B2C3s
+check("B3","C1", B3C1s)
+```
+
+$`r term("B3","C2")`$
+```{r B3C2}
+#B3C2
+B3C2s <- B2C4s
+check("B3","C2",B3C2s)
+```
+
+$`r term("B3","C3")`$
+```{r B3C3}
+#B3C3
+B3C3s <- B2C1s
+check("B3","C3", B3C3s)
+```
+
+$`r term("B3","C4")`$
+```{r B3C4}
+#B3C4
+B3C4s <- B2C2s
+check("B3", "C4", B3C4s)
+```
+
+$`r term("B4","B4")`$
+```{r B4B4}
+#B4^2
+B4B4s <- sapply(1:nY, function(u){
+  sum((X2 %*% (r_squared[u,] * tX2))^2)
+})
+check("B4", "B4", B4B4s)
+```
+
+$`r term("B4","C1")`$
+```{r B4C1}
+#B4C1
+B4C1s <- colSums(rr3X2 * r2X2) * (m-1)
+check("B4", "C1", B4C1s)
+```
+
+$`r term("B4","C2")`$
+```{r B4C2}
+#B4C2
+B4C2s <- sapply(1:nY, function(u){
+ crossprod(colSums((X2 %*% (r_squared[u,] * tX2)) * (X2 %*% (r[u,] * tX))),Y[,u])
+})
+check("B4", "C2", B4C2s)
+```
+
+$`r term("B4","C3")`$
+```{r B4C3}
+#B4C3
+B4C3s <- B4C1s
+check("B4", "C3", B4C3s)
+```
+
+
+$`r term("B4","C4")`$
+```{r B4C4}
+#B4C4
+B4C4s <- B4C2s
+check("B4", "C4", B4C4s)
+```
+
+$`r term("C1","C1")`$
+```{r C1C1}
+#C1^2
+C1C1s <- rowSums(r_squared) * rowSums(r3^2) * (m-1)^2
+check("C1", "C1", C1C1s)
+```
+
+$`r term("C1","C2")`$
+```{r C1C2}
+#C1C2
+Z <- r2X2 * r3X 
+C1C2s <- sapply(1:nY, function(u){
+  crossprod(Y[,u], Z[,u])
+}) * (m-1)
+check("C1", "C2", C1C2s)
+```
+
+$`r term("C1","C3")`$
+```{r C1C3}
+#C1C3
+C1C3s <- rowSums(r*r3)^2 * (m-1)^2
+check("C1", "C3", C1C3s)
+```
+
+$`r term("C1","C4")`$
+```{r C1C4}
+#C1C4
+Z <- rX * rr3X2
+C1C4s <- sapply(1:nY, function(u){
+  crossprod(Y[,u], Z[,u])
+}) * (m-1)
+check("C1", "C4", C1C4s)
+```
+
+$`r term("C2","C2")`$
+```{r C2C2}
+#C2^2
+C2C2s <- sapply(1:nY, function(u){
+  crossprod(Y[,u], (XXt * (X2 %*% (r_squared[u,]*tX2))) %*% Y[,u])
+})
+check("C2", "C2", C2C2s)
+```
+
+$`r term("C2","C3")`$
+```{r C2C3}
+#C2C3
+C2C3s <- C1C4s
+check("C2", "C3", C2C3s)
+```
+
+
+$`r term("C2","C4")`$
+```{r C2C4}
+#C2C4
+C2C4s <- sapply(1:nY, function(u){
+  Z <- X %*% (r[u,] * tX2)
+  crossprod(Y[,u], (Z * t(Z)) %*% Y[,u])
+})
+check("C2", "C4", C2C4s)
+```
+
+$`r term("C3","C3")`$
+```{r C3C3}
+#C3^2
+C3C3s <- C1C1s
+check("C3", "C3", C3C3s)
+```
+
+
+
+$`r term("C3","C4")`$
+```{r C3C4}
+#C3^2
+C3C4s <- C1C2s
+check("C3", "C4", C3C4s)
+```
+
+$`r term("C4","C4")`$
+```{r C4C4}
+#C4^2
+C4C4s <- C2C2s
+check("C4", "C4", C4C4s)
+```
