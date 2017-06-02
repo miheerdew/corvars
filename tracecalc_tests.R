@@ -2,11 +2,11 @@ library(rbenchmark)
 source("mvrnormR.R")
 source("tracecalcs.R")
 
-m <- 500
-mY <- 1
+m <- 50
+mY <- 25
 rho <- 0.4
 nsims <- 1000
-ndata <- 100
+ndata <- 10
 Beta <- 0
 s2 <- 1
 

@@ -2,12 +2,13 @@ library(rbenchmark)
 source("mvrnormR.R")
 source("tracecalcs.R")
 source("pointer_funs.R")
+source("tracecalcs_pointers.R")
 
-m <- 500
-mY <- 1
+m <- 50
+mY <- 25
 rho <- 0.4
 nsims <- 1000
-ndata <- 100
+ndata <- 10
 Beta <- 0
 s2 <- 1
 
@@ -22,45 +23,44 @@ for (sim in 1:nsims) {
   cat("sim ", sim, "\n")
   
   # Data generation
-  X <- mvrnormR(ndata, rep(0, m), Sig)
-  Y <- Beta * rowSums(X) + matrix(rnorm(ndata * mY, sd = sqrt(s2)), ncol = mY)
-  X <- newPointer(as.matrix(scale(X)))
-  Y <- newPointer(as.matrix(scale(Y)))
+  X0 <- mvrnormR(ndata, rep(0, m), Sig)
+  Y0 <- Beta * rowSums(X0) + matrix(rnorm(ndata * mY, sd = sqrt(s2)), ncol = mY)
+  X0 <- newPointer(as.matrix(scale(X0)))
+  Y0 <- newPointer(as.matrix(scale(Y0)))
+  
+  dx <- ncol(X0$value)
+  dy <- ncol(Y0$value)
   
   # General Calcs
-  n <- nrow(X)
+  n <- nrow(X0$value)
   
-  X2 <- newPointer(X^2)
-  X3 <- newPointer(X^3)
-  X4 <- newPointer(X^4)
-  Y2 <- newPointer(Y^2)
-  Y3 <- newPointer(Y^3)
-  Y4 <- newPointer(Y^4)
+  X02 <- newPointer(X0$value^2)
+  X03 <- newPointer(X0$value^3)
+  X04 <- newPointer(X0$value^4)
+  Y02 <- newPointer(Y0$value^2)
+  Y03 <- newPointer(Y0$value^3)
+  Y04 <- newPointer(Y0$value^4)
+  
+  tX0 <- newPointer(t(X0$value))
+  tY0 <- newPointer(t(Y0$value))
+  tX02 <- newPointer(t(X02$value))
+  tY02 <- newPointer(t(Y02$value))
+  tX03 <- newPointer(t(X03$value))
+  tY03 <- newPointer(t(Y03$value))
   
   
-  tX <- newPointer(t(X))
-  tY <- newPointer(t(Y))
-  tX2 <- newPointer(t(X2)); tY2 <- newPointer(t(Y2))
-  tX3 <- newPointer(t(X3)); tY3 <- newPointer(t(Y3))
-  XXt <- newPointer(tcrossprod(X)); YYt <- newPointer(tcrossprod(Y))
-  XXt2 <- newPointer(XXt^2); YYt2 <- newPointer(YYt^2)
+  Y04ColSums <- newPointer(colSums(Y04$value))
+  X04ColSums <- newPointer(colSums(X04$value))
   
-  Y4ColSums <- newPointer(colSums(Y4))
-  X4ColSums <- newPointer(colSums(X4))
-  X1RowSums <- newPointer(rowSums(X)); X2RowSums <- newPointer(rowSums(X2))
-  Y1RowSums <- newPointer(rowSums(Y)); Y2RowSums <- newPointer(rowSums(Y2))
+  xyCors <- newPointer(crossprod(Y0$value, X0$value))
+  txyCors <- newPointer(t(xyCors$value))
+  xyCors22 <- newPointer(crossprod(Y02$value, X0$value))
+  txyCors22 <- newPointer(crossprod(X02$value, Y0$value))
+  xyCors31_y <- newPointer(crossprod(Y03$value, X0$value))
+  xyCors31_x <- newPointer(crossprod(X03$value, Y0$value))
   
-  allr <- crossprod(Y, X)
-  allr22 <- crossprod(Y2, X2)
-  allr31 <- crossprod(Y3, X)
-  allr13 <- crossprod(Y, X3)
-  
-  # Trace calcs
-  #trace_uni(1)
-  #mlist <- trace_uni_mlist(Y[ , 1], X)
-  #unname(unlist(mlist[c("tr1", "tr2")]))
-  #trace_large_x(Y[ , 1], X)
-  #trace_kosher(Y[ , 1], X)
+  # Choosing S
+  S <- 1:50
   
   trs <- trace_large_x_indx(1)
   as[sim] <- trs[2] / trs[1]
