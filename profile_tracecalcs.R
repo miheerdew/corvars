@@ -5,10 +5,10 @@ library(rbenchmark)
 set.seed(12345678)
 
 #Breaking point ndata > 1.2*m
-m <- 200
+m <- 1000
 nY <- 1
 rho <- 0.5
-ndata <- 200
+ndata <- 1000
 Beta <- 0.2
 s2 <- 1
 Sig <- diag(1 - rho, m) + matrix(rep(rho, m^2), ncol = m)
