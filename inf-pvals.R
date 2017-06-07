@@ -2,8 +2,8 @@ source("mvrnormR.R")
 source("varcalcs.R")
 library(parallel)
 
-nsims <- 60
-rho <- 0.4
+nsims <- 100
+rho <- 0.1
 ndata <- 600
 
 
@@ -12,24 +12,30 @@ pval <- function(y, X){
   pnorm(sqrt(ndata) * sum(cor(y,X))/sqrt(varcalc1(y, X)), lower.tail = FALSE)
 }
 
-sim <- function(n) {
-  ps <- numeric(nsims)
-  for(i in 1:nsims){
+sim <- function(ns) {
+  foreach(n=ns, .combine = 'c') %:%
+   foreach(sim=1:nsims,
+          .combine=function(...) mean(c(...)),
+          .inorder = FALSE,
+          .multicombine = TRUE) %dopar% {
      Sigma <- diag(1 - rho, n) + matrix(rep(rho, n^2), ncol = n)
      X <- mvrnormR(ndata, rep(0, n), Sigma)
-  #   y <- rnorm(ndata)
-  #   r <- as.vector(crossprod(y, X)/ndata)
-  #   ids <- order(r, decreasing = TRUE)
-  #   ps[i] <- pval(y, X[,ids[1], drop=FALSE])
+     y <- rnorm(ndata)
+     r <- as.vector(crossprod(y, X)/ndata)
+     ids <- order(r, decreasing = TRUE)
+    pval(y, X[,ids[1], drop=FALSE])
   }
-  mean(ps)
-  ndata
 }
 
-RNGkind("L'Ecuyer-CMRG")
-set.seed(12346)
+cl <- makePSOCKcluster(detectCores()-1)
+setDefaultCluster(cl)
+clusterExport(NULL, c('rho','ndata','mvrnormR','nsims', 'pval','varcalc1'))
+registerDoParallel(cl)
 
-x <- seq(100, 200, by=100)
-y <- unlist(mclapply(x, sim, mc.silent = FALSE))
-plot(x, -log10(y), xlab="n", ylab="-log10(min-pval)")
-print(y)
+RNGkind("L'Ecuyer-CMRG")
+set.seed(12347)
+
+x <- c(seq(100, 900, by=100), seq(1000, 4000, by=500))
+y <- sim(x)
+plot(x, 1/y, xlab="n", ylab="1/min(p-value)")
+stopCluster(cl)
