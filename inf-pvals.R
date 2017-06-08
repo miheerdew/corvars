@@ -7,6 +7,12 @@ ndata <- 600
 alpha <- 0.05
 MAXIT <- 10
 
+mvrnormR <- function(n, mu, sigma) {
+  ncols <- ncol(sigma)
+  mu <- rep(mu, each = n) ## not obliged to use a matrix (recycling)
+  mu + matrix(rnorm(n * ncols), ncol = ncols) %*% chol(sigma)
+}
+
 bh_reject <- function (pvals, alpha, conserv = TRUE) {
 
   m <- length(pvals)
@@ -68,7 +74,7 @@ RNGkind("L'Ecuyer-CMRG")
 set.seed(12347)
 
 
-x <- seq(100, 1000, by=100)
+x <- c(100, 200, 300, 500, 800, 1000)
 y <- sim(x)
-#plot(x, y, xlab="n", ylab="Probability of fixed point")
+plot(x, y, xlab="Number of variables", ylab="Probability of fixed point")
 stopCluster(cl)
