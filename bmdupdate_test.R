@@ -51,3 +51,7 @@ allr31 <- crossprod(Y3, X)
 trs <- trace_indx(1)
 a <- trs[2] / trs[1]
 b <- trs[1] ^ 2 / trs[2]
+
+library(bmdupdate)
+bobj <- new(BmdUpdater, X, Y[ , 1, drop = FALSE])
+# ??
