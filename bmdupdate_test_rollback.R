@@ -103,7 +103,14 @@ for (i in seq_along(ndatas)) {
   
 }
 
+save(timer_mats, ndatas, ms, file = "bmdupdate_timers/bmdupdate_timer_data.RData")
+
 # Plotting timers
 library(reshape)
-library(ggplot)
+library(ggplot2)
 
+two2one <- melt(timer_mats[[2]] / timer_mats[[1]])
+thr2two <- melt(timer_mats[[3]] / timer_mats[[2]])
+names(two2one) <- names(thr2two) <- c("n", "m", "ratio")
+
+ggplot(two2one, aes(x = m, y = n, fill = ratio)) + geom_tile()
