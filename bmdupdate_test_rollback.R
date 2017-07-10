@@ -108,9 +108,27 @@ save(timer_mats, ndatas, ms, file = "bmdupdate_timers/bmdupdate_timer_data.RData
 # Plotting timers
 library(reshape)
 library(ggplot2)
+library(grid)
+library(gridExtra)
 
-two2one <- melt(timer_mats[[2]] / timer_mats[[1]])
-thr2two <- melt(timer_mats[[3]] / timer_mats[[2]])
+two2one <- melt(log2(timer_mats[[1]] / timer_mats[[2]]))
+thr2two <- melt(log2(timer_mats[[2]] / timer_mats[[3]]))
 names(two2one) <- names(thr2two) <- c("n", "m", "ratio")
+maxplot <- max(abs(c(two2one$ratio, thr2two$ratio)))
 
-ggplot(two2one, aes(x = m, y = n, fill = ratio)) + geom_tile()
+p1 <- ggplot(two2one, aes(x = m, y = n, fill = ratio)) + geom_tile() + 
+      geom_abline(slope = 1.2, intercept = 0, lwd = 3) + 
+      guides(fill = guide_legend(title = "log2(meth1 / meth2)")) + 
+      ggtitle("meth2 = BmdUpdater$pvals(par = F), meth1 = trace_indx") + 
+      scale_fill_gradient(low = "blue", high = "red", limits = c(-maxplot, maxplot))
+p2 <- ggplot(thr2two, aes(x = m, y = n, fill = ratio)) + geom_tile() + 
+      geom_abline(slope = 1.2, intercept = 0, lwd = 3) + 
+      guides(fill = guide_legend(title = "log2(meth1 / meth2)")) + 
+      ggtitle("meth2 = BmdUpdater$pvals(par = T), meth1 = BmdUpdater$pvals(par = F)") + 
+      scale_fill_gradient(low = "blue", high = "red", limits = c(-maxplot, maxplot))
+plist <- list(p1, p2)
+
+pdf("bmdupdate_timers/bmdupdate_timer_plot.pdf", width = 14)
+grid.arrange(grobs = plist, ncol = 2, 
+             top = textGrob("Timing Ratios", gp = gpar(fontsize = 20)))
+dev.off()
