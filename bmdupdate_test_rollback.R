@@ -1,7 +1,7 @@
 source("mvrnormR.R")
 source("tracecalcs.R")
 library(bmdupdate)
-
+library(rbenchmark)
 
 # ndatas
 ndatas <- seq(50, 500, 50)
