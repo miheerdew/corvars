@@ -601,6 +601,23 @@ trace_fast <- function () {
   
 }
 
+pvals.ChiSq <- function(A){
+	#Need Global variables called X and Y
+	ndata <- nrow(X)
+	if(min(A) <= dx) {
+		tstat <- rowSums(cor(Y, X[,A])^2)
+		trs <- sapply(1:dy, function(i) trace_large_x(Y[,i], X[,A]))
+	} else {
+		A <- A - dx
+		tstat <- rowSums(cor(X, Y[,A])^2)
+		trs <- sapply(1:dx, function(i) trace_large_x(X[,i], Y[,A]))
+	}
+
+    a <- trs[2, ] / trs[1, ]
+    b <- trs[1, ] ^ 2 / trs[2, ]
+    pchisq(ndata * Tstat / a, df = b, lower.tail = FALSE)
+}
+
 trace_large_x <- function(
                        y, #m x 1 vector
                        X, #m x dx matrix
